@@ -9,6 +9,7 @@ function setup() { return DiwaliApi.setup(); }
 `;
 
 export default defineConfig({
+  publicDir: false,
   build: {
     outDir: 'apps-script',
     emptyOutDir: false,
