@@ -16,6 +16,8 @@ export interface Table<T extends { id: string }> {
   insert(row: T): void;
   update(id: string, patch: Partial<T>): void;
   remove(id: string): void;
+  /** Deletes every row (keeps the header). */
+  clear(): void;
 }
 
 export interface Store {
@@ -88,6 +90,13 @@ const headcount = (r: Pick<RsvpRow, 'attending' | 'plus_one'>) =>
 
 export const parseLooking = (v: string): LookingForward[] =>
   LOOKING_FORWARD.filter((x) => (v || '').split(',').includes(x));
+
+/** Votes for awards that no longer exist (from earlier versions) are ignored and cleared. */
+const currentVotes = (store: Store) => store.votes.all().filter((v) => AWARDS.includes(v.award));
+
+function purgeOldAwardVotes(store: Store) {
+  for (const v of store.votes.all()) if (!AWARDS.includes(v.award)) store.votes.remove(v.id);
+}
 
 function validToken(token: unknown): token is string {
   return typeof token === 'string' && token.length >= 32 && token.length <= 128;
@@ -284,7 +293,7 @@ export function checkPass(store: Store, env: Env, code: unknown): PassInfo {
   if (!found) fail('INVALID_PASS');
   const { rsvp, code: c, isPlusOne } = found!;
   const votes: PassInfo['votes'] = {};
-  for (const v of store.votes.all()) if (v.voter_code === c) votes[v.award] = v.video_id;
+  for (const v of currentVotes(store)) if (v.voter_code === c) votes[v.award] = v.video_id;
   return {
     name: isPlusOne ? rsvp.plus_one_name : rsvp.full_name,
     own_video_id: store.videos.all().find((v) => v.rsvp_id === rsvp.id)?.id ?? null,
@@ -296,10 +305,12 @@ export function castVote(store: Store, env: Env, code: unknown, award: unknown, 
   if (!store.getSettings().voting_open) fail('VOTING_CLOSED');
   const found = findByPass(store, code);
   if (!found) fail('INVALID_PASS');
+  if (award === undefined || award === null || award === '') award = AWARDS[0];
   if (!AWARDS.includes(award as Award)) fail('INVALID_AWARD');
   const video = store.videos.all().find((v) => v.id === videoId && v.status === 'approved');
   if (!video) fail('INVALID_VIDEO');
   if (video!.rsvp_id === found!.rsvp.id) fail('OWN_VIDEO');
+  purgeOldAwardVotes(store);
   if (store.votes.all().some((v) => v.voter_code === found!.code && v.award === award)) fail('ALREADY_VOTED');
   store.votes.insert({
     id: env.uuid(),
@@ -317,7 +328,7 @@ export function getResults(store: Store, isAdmin: boolean): ResultRow[] {
   const videos = new Map(store.videos.all().map((v) => [v.id, v]));
   const names = new Map(store.rsvps.all().map((r) => [r.id, r.full_name.split(' ')[0]]));
   const counts = new Map<string, ResultRow>();
-  for (const vote of store.votes.all()) {
+  for (const vote of currentVotes(store)) {
     const v = videos.get(vote.video_id);
     if (!v) continue;
     const key = vote.award + '|' + v.id;
@@ -366,7 +377,7 @@ function adminRsvps(store: Store): AdminRsvp[] {
 
 function adminVideos(store: Store): AdminVideo[] {
   const names = new Map(store.rsvps.all().map((r) => [r.id, r.full_name]));
-  const votes = store.votes.all();
+  const votes = currentVotes(store);
   return store.videos
     .all()
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
@@ -466,7 +477,14 @@ export function handle(store: Store, env: Env, action: string, args: Record<stri
       store.saveSettings(cleanSettings((args.patch ?? {}) as Record<string, unknown>));
       return store.getSettings();
     case 'adminResetVotes':
-      for (const v of store.votes.all()) store.votes.remove(v.id);
+      store.votes.clear();
+      return true;
+    case 'adminClearAll':
+      // Wipes guest data after testing. Event details in Settings are kept.
+      if (args.confirm !== 'DELETE') fail('CONFIRM_REQUIRED');
+      store.votes.clear();
+      store.videos.clear();
+      store.rsvps.clear();
       return true;
     default:
       return fail('UNKNOWN_ACTION');

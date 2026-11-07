@@ -8,7 +8,7 @@ import { download } from '../lib/csv';
 import { formatDate, formatTimeRange, icsFile } from '../lib/format';
 import { useAsync } from '../lib/hooks';
 import { ATTENDING_LABELS, CATEGORY_LABELS, DIET_LABELS, LOOKING_FORWARD_LABELS } from '../lib/labels';
-import { guestToken, hasSubmitted, markSubmitted, savePass } from '../lib/storage';
+import { forgetSubmitted, guestToken, hasSubmitted, markSubmitted, savePass } from '../lib/storage';
 import { formatDuration, parseYouTubeId, thumbnail } from '../lib/youtube';
 import {
   ATTENDING, DIETS, LOOKING_FORWARD, MAX_VIDEO_SECONDS, VIDEO_CATEGORIES,
@@ -85,7 +85,10 @@ export default function Rsvp() {
     api
       .getMyRsvp(guestToken())
       .then((r) => {
-        if (!r) return;
+        if (!r) {
+          forgetSubmitted();
+          return;
+        }
         setEditing(true);
         setForm({
           full_name: r.full_name, attending: r.attending, plus_one: r.plus_one, plus_one_name: r.plus_one_name,
@@ -386,7 +389,7 @@ export default function Rsvp() {
               <p className="step-sub">
                 Send us the <strong>BEST</strong> YouTube video you’ve <strong>EVER</strong> watched. It could be hilarious, mind-blowing,
                 bizarre, wholesome, educational or just completely unhinged. We’ll watch everyone’s submissions together at the party
-                and vote for the winners.
+                and vote for the best one.
               </p>
               <p className="rule-badge">⏱ Videos must be under 15 minutes</p>
 

@@ -44,5 +44,10 @@ export function guestToken(): string {
 
 export const hasSubmitted = () => storage.get(SUBMITTED_KEY) === '1';
 export const markSubmitted = () => storage.set(SUBMITTED_KEY, '1');
+/** The hosts deleted this RSVP (e.g. clearing test data): start over as a new guest. */
+export const forgetSubmitted = () => {
+  storage.set(SUBMITTED_KEY, null);
+  storage.set(PASS_KEY, null);
+};
 export const savedPass = () => storage.get(PASS_KEY) ?? '';
 export const savePass = (code: string) => storage.set(PASS_KEY, code);

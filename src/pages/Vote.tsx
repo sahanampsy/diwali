@@ -5,10 +5,10 @@ import { VideoModal } from '../components/VideoModal';
 import { ErrorNote, Field, Spinner } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 import { useAsync } from '../lib/hooks';
-import { AWARD_LABELS, CATEGORY_LABELS } from '../lib/labels';
+import { CATEGORY_LABELS } from '../lib/labels';
 import { savedPass, savePass } from '../lib/storage';
 import { thumbnail } from '../lib/youtube';
-import { AWARDS, type Award, type PartyVideo, type PassInfo } from '../server/types';
+import { AWARDS, type PartyVideo, type PassInfo } from '../server/types';
 
 export default function Vote() {
   const settings = useAsync(() => api.getSettings(), [], 10000);
@@ -49,7 +49,7 @@ export default function Vote() {
     <main className="vote">
       <header className="vote-head">
         <Link to="/" className="back-link">← {s.event_name}</Link>
-        <h1 className="display-sm">The Watch Party Awards 🏆</h1>
+        <h1 className="display-sm">Vote for the Best Video 🏆</h1>
       </header>
 
       {s.results_revealed ? (
@@ -84,28 +84,24 @@ export default function Vote() {
   );
 }
 
+const AWARD = AWARDS[0];
+
 function Ballot({ code, pass, onPass }: { code: string; pass: PassInfo; onPass: (p: PassInfo) => void }) {
   const videos = useAsync(() => api.getPartyVideos());
-  const [award, setAward] = useState<Award>(() => AWARDS.find((a) => !pass.votes[a]) ?? 'funniest');
   const [picked, setPicked] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<PartyVideo | null>(null);
-
-  const done = AWARDS.filter((a) => pass.votes[a]).length;
-  const myVote = pass.votes[award];
+  const myVote = pass.votes[AWARD];
 
   const lockIn = async () => {
     if (!picked) return;
     setSaving(true);
     setError('');
     try {
-      await api.castVote(code, award, picked);
-      const updated = { ...pass, votes: { ...pass.votes, [award]: picked } };
-      onPass(updated);
+      await api.castVote(code, AWARD, picked);
+      onPass({ ...pass, votes: { ...pass.votes, [AWARD]: picked } });
       setPicked(null);
-      const nextAward = AWARDS.find((a) => !updated.votes[a]);
-      if (nextAward) setAward(nextAward);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -118,29 +114,13 @@ function Ballot({ code, pass, onPass }: { code: string; pass: PassInfo; onPass: 
 
   return (
     <section className="ballot">
-      <p className="ballot-hello">Hey {pass.name.split(' ')[0]} 👋 · {done}/{AWARDS.length} awards voted</p>
+      <p className="ballot-hello">
+        Hey {pass.name.split(' ')[0]} 👋 {myVote ? 'Your vote is in.' : 'Which video was the best of the night? You get one vote.'}
+      </p>
 
-      <div className="award-tabs" role="tablist">
-        {AWARDS.map((a) => (
-          <button key={a} role="tab" aria-selected={award === a}
-            className={`award-tab ${award === a ? 'is-active' : ''} ${pass.votes[a] ? 'is-voted' : ''}`}
-            onClick={() => { setAward(a); setPicked(null); setError(''); }}>
-            <span>{AWARD_LABELS[a].emoji}</span>
-            <span className="award-tab-label">{AWARD_LABELS[a].label}</span>
-            {pass.votes[a] && <span className="tick">✓</span>}
-          </button>
-        ))}
-      </div>
-
-      <div className="award-head">
-        <h2>{AWARD_LABELS[award].emoji} {AWARD_LABELS[award].label}</h2>
-        <p className="muted">{AWARD_LABELS[award].blurb}</p>
-        {myVote && <p className="chip chip-good">Vote locked in ✓</p>}
-      </div>
-
-      {done === AWARDS.length && (
+      {myVote && (
         <div className="all-done">
-          <Diya size={48} /> All your votes are in. Results are revealed by the hosts. No bribes accepted (some bribes accepted).
+          <Diya size={48} /> Vote locked in. The hosts will reveal the winner. No bribes accepted (some bribes accepted).
         </div>
       )}
 
@@ -174,9 +154,9 @@ function Ballot({ code, pass, onPass }: { code: string; pass: PassInfo; onPass: 
       {!myVote && (
         <div className="sticky-cta">
           <button className="btn btn-primary btn-block btn-glow" disabled={!picked || saving} onClick={lockIn}>
-            {saving ? 'Locking in…' : picked ? `Lock in my ${AWARD_LABELS[award].label} vote 🔒` : 'Tap a video to pick it'}
+            {saving ? 'Locking in…' : picked ? 'Lock in my vote 🔒' : 'Tap a video to pick it'}
           </button>
-          <p className="muted small center">One vote per award. Once it’s locked, it’s locked.</p>
+          <p className="muted small center">One vote each. Once it’s locked, it’s locked.</p>
         </div>
       )}
 

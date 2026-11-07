@@ -7,7 +7,7 @@ import {
   DEFAULT_SETTINGS, type EventSettings, type RsvpRow, type VideoRow, type VoteRow,
 } from '../server/types';
 
-const KEY = 'diwali.demoDb.v3';
+const KEY = 'diwali.demoDb.v4';
 export const DEMO_PASSWORD = 'diwali';
 
 interface Db {
@@ -106,6 +106,9 @@ function table<K extends 'rsvps' | 'videos' | 'votes'>(db: Db, key: K): Table<Db
     },
     remove: (id: string) => {
       (db[key] as R[]) = (db[key] as R[]).filter((r) => r.id !== id) as Db[K];
+    },
+    clear: () => {
+      (db[key] as R[]) = [] as unknown as Db[K];
     },
   };
 }

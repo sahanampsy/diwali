@@ -48,7 +48,7 @@ const SETTINGS_SHEET = 'Settings';
 
 const WRITE_ACTIONS = new Set([
   'submitRsvp', 'castVote', 'adminDeleteRsvp', 'adminUpdateVideo', 'adminRecheckVideo', 'adminDeleteVideo',
-  'adminUpdateSettings', 'adminResetVotes',
+  'adminUpdateSettings', 'adminResetVotes', 'adminClearAll',
 ]);
 
 // ---------------------------------------------------------------- sheet storage
@@ -149,6 +149,13 @@ class SheetTable<R extends { id: string }> implements Table<R> {
   remove(id: string) {
     const n = this.rowNumber(id);
     if (n > 0) this.sheet().deleteRow(n);
+    this.rows = null;
+  }
+
+  clear() {
+    const sh = this.sheet();
+    const last = sh.getLastRow();
+    if (last > 1) sh.deleteRows(2, last - 1);
     this.rows = null;
   }
 }

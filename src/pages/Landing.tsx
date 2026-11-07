@@ -15,7 +15,7 @@ function splitHeadline(h: string): [string, string] {
 }
 
 const FEATURES = [
-  { emoji: '📺', title: 'The YouTube Watch Party', text: 'Bring the best video the internet ever gave you. We watch them all, then vote for the winners.' },
+  { emoji: '📺', title: 'The YouTube Watch Party', text: 'Bring the best video the internet ever gave you. We watch them all, then vote for the best one.' },
   { emoji: '🍛', title: 'A ridiculous feast', text: 'Tell us how you eat and we’ll make sure there’s far too much of it.' },
   { emoji: '🎲', title: 'Board games & cocktails', text: 'No dance floor. Just fierce competition and very good drinks.' },
   { emoji: '🐈', title: 'Meet the cats', text: 'Our cats are co-hosting. Come and say hello.' },

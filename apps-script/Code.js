@@ -29,13 +29,7 @@ var DiwaliApi = (function(exports) {
 		"watch_party",
 		"everything"
 	];
-	var AWARDS = [
-		"funniest",
-		"mind_blowing",
-		"wtf",
-		"hidden_gem",
-		"peoples_champion"
-	];
+	var AWARDS = ["best"];
 	var DEFAULT_SETTINGS = {
 		event_name: "Diwali at Ours",
 		headline: "LET'S GET LIT. IT'S DIWALI!",
@@ -126,6 +120,11 @@ var DiwaliApi = (function(exports) {
 	}
 	var headcount = (r) => r.attending === "no" ? 0 : 1 + (r.plus_one ? 1 : 0);
 	var parseLooking = (v) => LOOKING_FORWARD.filter((x) => (v || "").split(",").includes(x));
+	/** Votes for awards that no longer exist (from earlier versions) are ignored and cleared. */
+	var currentVotes = (store) => store.votes.all().filter((v) => AWARDS.includes(v.award));
+	function purgeOldAwardVotes(store) {
+		for (const v of store.votes.all()) if (!AWARDS.includes(v.award)) store.votes.remove(v.id);
+	}
 	function validToken(token) {
 		return typeof token === "string" && token.length >= 32 && token.length <= 128;
 	}
@@ -317,7 +316,7 @@ var DiwaliApi = (function(exports) {
 		if (!found) fail("INVALID_PASS");
 		const { rsvp, code: c, isPlusOne } = found;
 		const votes = {};
-		for (const v of store.votes.all()) if (v.voter_code === c) votes[v.award] = v.video_id;
+		for (const v of currentVotes(store)) if (v.voter_code === c) votes[v.award] = v.video_id;
 		return {
 			name: isPlusOne ? rsvp.plus_one_name : rsvp.full_name,
 			own_video_id: (_store$videos$all$fin = (_store$videos$all$fin2 = store.videos.all().find((v) => v.rsvp_id === rsvp.id)) === null || _store$videos$all$fin2 === void 0 ? void 0 : _store$videos$all$fin2.id) !== null && _store$videos$all$fin !== void 0 ? _store$videos$all$fin : null,
@@ -328,10 +327,12 @@ var DiwaliApi = (function(exports) {
 		if (!store.getSettings().voting_open) fail("VOTING_CLOSED");
 		const found = findByPass(store, code);
 		if (!found) fail("INVALID_PASS");
+		if (award === void 0 || award === null || award === "") award = AWARDS[0];
 		if (!AWARDS.includes(award)) fail("INVALID_AWARD");
 		const video = store.videos.all().find((v) => v.id === videoId && v.status === "approved");
 		if (!video) fail("INVALID_VIDEO");
 		if (video.rsvp_id === found.rsvp.id) fail("OWN_VIDEO");
+		purgeOldAwardVotes(store);
 		if (store.votes.all().some((v) => v.voter_code === found.code && v.award === award)) fail("ALREADY_VOTED");
 		store.votes.insert({
 			id: env.uuid(),
@@ -348,7 +349,7 @@ var DiwaliApi = (function(exports) {
 		const videos = new Map(store.videos.all().map((v) => [v.id, v]));
 		const names = new Map(store.rsvps.all().map((r) => [r.id, r.full_name.split(" ")[0]]));
 		const counts = /* @__PURE__ */ new Map();
-		for (const vote of store.votes.all()) {
+		for (const vote of currentVotes(store)) {
 			var _counts$get, _names$get;
 			const v = videos.get(vote.video_id);
 			if (!v) continue;
@@ -395,7 +396,7 @@ var DiwaliApi = (function(exports) {
 	}
 	function adminVideos(store) {
 		const names = new Map(store.rsvps.all().map((r) => [r.id, r.full_name]));
-		const votes = store.votes.all();
+		const votes = currentVotes(store);
 		return store.videos.all().sort((a, b) => b.created_at.localeCompare(a.created_at)).map((v) => {
 			var _names$get2;
 			return {
@@ -510,7 +511,13 @@ var DiwaliApi = (function(exports) {
 				store.saveSettings(cleanSettings((_args$patch2 = args.patch) !== null && _args$patch2 !== void 0 ? _args$patch2 : {}));
 				return store.getSettings();
 			case "adminResetVotes":
-				for (const v of store.votes.all()) store.votes.remove(v.id);
+				store.votes.clear();
+				return true;
+			case "adminClearAll":
+				if (args.confirm !== "DELETE") fail("CONFIRM_REQUIRED");
+				store.votes.clear();
+				store.videos.clear();
+				store.rsvps.clear();
 				return true;
 			default: return fail("UNKNOWN_ACTION");
 		}
@@ -543,7 +550,8 @@ var DiwaliApi = (function(exports) {
 		"adminRecheckVideo",
 		"adminDeleteVideo",
 		"adminUpdateSettings",
-		"adminResetVotes"
+		"adminResetVotes",
+		"adminClearAll"
 	]);
 	/**
 	* The Sheet this script is attached to (Extensions → Apps Script), or, for a
@@ -632,6 +640,12 @@ var DiwaliApi = (function(exports) {
 		remove(id) {
 			const n = this.rowNumber(id);
 			if (n > 0) this.sheet().deleteRow(n);
+			this.rows = null;
+		}
+		clear() {
+			const sh = this.sheet();
+			const last = sh.getLastRow();
+			if (last > 1) sh.deleteRows(2, last - 1);
 			this.rows = null;
 		}
 	};

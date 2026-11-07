@@ -7,7 +7,7 @@ A festive, mobile-first RSVP site for a Diwali house party, with Google Sheets a
 - **Confirmation** with fireworks, a calendar invite, and a **party pass** code for voting.
 - **Host dashboard** (`/admin`, password protected): RSVPs, videos, Party Control, and event details.
 - **Watch party screen** (`/party`) for the TV: gallery and player, and the leaderboard.
-- **Guest voting** (`/vote`) on phones: one locked vote per award, and no voting for your own video.
+- **Guest voting** (`/vote`) on phones: one locked vote each for the **Best Video**, and no voting for your own video.
 
 ## How it works
 
@@ -75,8 +75,7 @@ You can also open the Sheet itself at any time to see the raw data. Avoid editin
 4. **Close voting**, then **Reveal results**. The leaderboard and fireworks appear on everyone's screen.
    A **Reset all votes** button is there for after a rehearsal.
 
-Awards: Funniest Video, Most Mind-Blowing, Most WTF, Hidden Gem and People's Champion.
-Every approved video can win any award.
+There's one award, **🏆 Best Video**. Video categories (Funniest, Most WTF and so on) are just labels that tell everyone what kind of video is coming.
 
 ## Exports
 

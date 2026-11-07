@@ -4,14 +4,15 @@ export type Attending = 'yes' | 'no' | 'maybe';
 export type Diet = 'vegetarian' | 'vegan' | 'jain' | 'non_vegetarian' | 'other';
 export type VideoCategory = 'funniest' | 'mind_blowing' | 'wholesome' | 'wtf' | 'hidden_gem' | 'other';
 export type LookingForward = 'cats' | 'board_games' | 'cocktails' | 'watch_party' | 'everything';
-export type Award = 'funniest' | 'mind_blowing' | 'wtf' | 'hidden_gem' | 'peoples_champion';
+/** One award: the best video of the night. */
+export type Award = 'best';
 export type VideoStatus = 'pending' | 'approved' | 'flagged';
 
 export const ATTENDING: Attending[] = ['yes', 'no', 'maybe'];
 export const DIETS: Diet[] = ['vegetarian', 'vegan', 'jain', 'non_vegetarian', 'other'];
 export const VIDEO_CATEGORIES: VideoCategory[] = ['funniest', 'mind_blowing', 'wholesome', 'wtf', 'hidden_gem', 'other'];
 export const LOOKING_FORWARD: LookingForward[] = ['cats', 'board_games', 'cocktails', 'watch_party', 'everything'];
-export const AWARDS: Award[] = ['funniest', 'mind_blowing', 'wtf', 'hidden_gem', 'peoples_champion'];
+export const AWARDS: Award[] = ['best'];
 export const MAX_VIDEO_SECONDS = 15 * 60;
 
 export interface EventSettings {

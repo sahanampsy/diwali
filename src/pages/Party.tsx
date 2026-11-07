@@ -8,7 +8,7 @@ import { VideoModal } from '../components/VideoModal';
 import { ErrorNote, Spinner } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 import { useAsync } from '../lib/hooks';
-import { AWARD_LABELS, CATEGORY_LABELS } from '../lib/labels';
+import { CATEGORY_LABELS } from '../lib/labels';
 import { formatDuration, thumbnail, watchUrl } from '../lib/youtube';
 import { AWARDS, VIDEO_CATEGORIES, type PartyVideo, type ResultRow, type VideoCategory } from '../server/types';
 
@@ -147,57 +147,54 @@ function Leaderboard({ revealed, votingOpen }: { revealed: boolean; votingOpen: 
         <Mandala className="stage-mandala" />
         <Diya size={72} lit={false} />
         <h1 className="display-sm">{votingOpen ? 'Votes are pouring in…' : 'The results are locked 🔒'}</h1>
-        <p className="muted">{votingOpen ? 'Get your votes in before the hosts close the polls.' : 'Only the hosts can reveal the winners. Drumroll, please.'}</p>
+        <p className="muted">{votingOpen ? 'Get your votes in before the hosts close the polls.' : 'Only the hosts can reveal the winner. Drumroll, please.'}</p>
       </section>
     );
   }
   if (results.loading && !results.data) return <Spinner label="Counting the votes" />;
   if (!results.data) return <ErrorNote onRetry={() => results.reload()}>{errorMessage(results.error)}</ErrorNote>;
 
-  const byAward = AWARDS.map((a) => ({ award: a, rows: results.data!.filter((r) => r.award === a) }));
+  const rows = results.data.filter((r) => r.award === AWARDS[0]);
+  const max = Math.max(1, ...rows.map((r) => r.votes));
+  const winner = rows[0];
+  const tied = rows.filter((r) => winner && r.votes === winner.votes);
 
   return (
     <section className="leaderboard">
       <Fireworks durationMs={3500} />
-      <h1 className="display-sm center">And the winners are…</h1>
-      <div className="awards">
-        {byAward.map(({ award, rows }, i) => {
-          const max = Math.max(1, ...rows.map((r) => r.votes));
-          const winner = rows[0];
-          const tied = rows.filter((r) => winner && r.votes === winner.votes);
-          return (
-            <article key={award} className={`award ${award === 'peoples_champion' ? 'award-champion' : ''}`} style={{ ['--i' as string]: i }}>
-              <header>
-                <span className="award-emoji">{AWARD_LABELS[award].emoji}</span>
-                <h2>{AWARD_LABELS[award].label}</h2>
-              </header>
-              {winner ? (
-                <>
-                  <a className="winner" href={watchUrl(winner.youtube_id)} target="_blank" rel="noreferrer">
-                    <img src={thumbnail(winner.youtube_id, 'mq')} alt="" />
-                    <div>
-                      <p className="winner-crown">👑 {tied.length > 1 ? 'Tied winner' : 'Winner'}</p>
-                      <p className="winner-title">{winner.title}</p>
-                      <p className="muted small">Submitted by {winner.submitter} · {winner.votes} {winner.votes === 1 ? 'vote' : 'votes'}</p>
-                    </div>
-                  </a>
-                  <ol className="bars">
-                    {rows.slice(0, 5).map((r) => (
-                      <li key={r.video_id}>
-                        <span className="bar-label">{r.title}</span>
-                        <span className="bar"><span style={{ width: `${(r.votes / max) * 100}%` }} /></span>
-                        <span className="bar-num">{r.votes}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </>
-              ) : (
-                <p className="muted">No votes in this category.</p>
-              )}
-            </article>
-          );
-        })}
-      </div>
+      <h1 className="display-sm center">🏆 And the Best Video is…</h1>
+      <article className="award award-champion award-solo" style={{ ['--i' as string]: 0 }}>
+        {winner ? (
+          <>
+            <a className="winner winner-big" href={watchUrl(winner.youtube_id)} target="_blank" rel="noreferrer">
+              <img src={thumbnail(winner.youtube_id)} alt="" />
+              <div>
+                <p className="winner-crown">👑 {tied.length > 1 ? `${tied.length}-way tie!` : 'Winner'}</p>
+                <p className="winner-title">{tied.map((t) => t.title).join(' & ')}</p>
+                <p className="muted">
+                  Submitted by {tied.map((t) => t.submitter).join(' & ')} · {winner.votes} {winner.votes === 1 ? 'vote' : 'votes'}
+                </p>
+              </div>
+            </a>
+            {rows.length > 1 && (
+              <>
+                <h2 className="runners-up">The full count</h2>
+                <ol className="bars">
+                  {rows.map((r) => (
+                    <li key={r.video_id}>
+                      <span className="bar-label">{r.title}</span>
+                      <span className="bar"><span style={{ width: `${(r.votes / max) * 100}%` }} /></span>
+                      <span className="bar-num">{r.votes}</span>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
+          </>
+        ) : (
+          <p className="muted center">No votes were cast.</p>
+        )}
+      </article>
     </section>
   );
 }

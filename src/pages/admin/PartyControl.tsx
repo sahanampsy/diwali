@@ -4,7 +4,6 @@ import { Qr } from '../../components/Qr';
 import { ErrorNote, Spinner } from '../../components/ui';
 import { api, errorMessage } from '../../lib/api';
 import { useAsync } from '../../lib/hooks';
-import { AWARD_LABELS } from '../../lib/labels';
 import { AWARDS, type EventSettings } from '../../server/types';
 
 export function PartyControl({ onError }: { onError: (m: string) => void }) {
@@ -35,6 +34,21 @@ export function PartyControl({ onError }: { onError: (m: string) => void }) {
     try {
       await api.admin.resetVotes();
       results.reload();
+    } catch (e) {
+      onError(errorMessage(e));
+    }
+  };
+
+  const clearAll = async () => {
+    const typed = prompt(
+      'This deletes ALL RSVPs, videos and votes, for a clean start after testing. Event details are kept.\n\nType DELETE to confirm:',
+    );
+    if (typed !== 'DELETE') return;
+    try {
+      await api.admin.clearAll();
+      results.reload();
+      videos.reload();
+      alert('Done. All RSVPs, videos and votes are deleted.');
     } catch (e) {
       onError(errorMessage(e));
     }
@@ -102,7 +116,7 @@ export function PartyControl({ onError }: { onError: (m: string) => void }) {
       </div>
 
       <div className="card">
-        <h3>Live tally <span className="muted small">(hosts only until you reveal)</span></h3>
+        <h3>Live tally: Best Video <span className="muted small">(hosts only until you reveal)</span></h3>
         {results.error ? (
           <ErrorNote onRetry={() => results.reload()}>{errorMessage(results.error)}</ErrorNote>
         ) : (
@@ -111,7 +125,6 @@ export function PartyControl({ onError }: { onError: (m: string) => void }) {
               const rows = (results.data ?? []).filter((r) => r.award === a);
               return (
                 <div key={a} className="tally">
-                  <h4>{AWARD_LABELS[a].emoji} {AWARD_LABELS[a].label}</h4>
                   {rows.length === 0 ? <p className="muted small">No votes yet</p> : (
                     <ol>
                       {rows.slice(0, 5).map((r) => (
@@ -124,6 +137,14 @@ export function PartyControl({ onError }: { onError: (m: string) => void }) {
             })}
           </div>
         )}
+      </div>
+
+      <div className="card danger-zone">
+        <h3>Start fresh</h3>
+        <p className="muted small">
+          Finished testing? This deletes every RSVP, video and vote so you can share the invite with a clean slate. Event details stay as they are.
+        </p>
+        <button className="btn btn-danger" onClick={clearAll}>🗑 Delete all RSVPs, videos & votes</button>
       </div>
     </div>
   );

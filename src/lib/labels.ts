@@ -32,9 +32,5 @@ export const LOOKING_FORWARD_LABELS: Record<LookingForward, { label: string; emo
 };
 
 export const AWARD_LABELS: Record<Award, { label: string; emoji: string; blurb: string }> = {
-  funniest: { label: 'Funniest Video', emoji: '😂', blurb: 'Made us laugh the hardest' },
-  mind_blowing: { label: 'Most Mind-Blowing', emoji: '🤯', blurb: 'Rearranged our brain cells' },
-  wtf: { label: 'Most WTF', emoji: '😳', blurb: 'We have questions' },
-  hidden_gem: { label: 'Hidden Gem', emoji: '💎', blurb: 'How has nobody seen this?' },
-  peoples_champion: { label: 'People’s Champion', emoji: '🏆', blurb: 'The overall favourite' },
+  best: { label: 'Best Video', emoji: '🏆', blurb: 'The one we’ll still be quoting next Diwali' },
 };
