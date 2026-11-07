@@ -47,6 +47,29 @@ var DiwaliApi = (function(exports) {
 		results_revealed: false
 	};
 	var BOOLEAN_SETTINGS = ["voting_open", "results_revealed"];
+	/**
+	* Placeholder values written by earlier versions of this script. If a Sheet
+	* still has them, they're swapped for the real party details in DEFAULT_SETTINGS.
+	*/
+	var OLD_PLACEHOLDERS = {
+		venue_name: ["Our Place", "Our place"],
+		venue_address: ["123 Lantern Lane, Your City", "Tap for directions"],
+		starts_at: [
+			"2026-11-14T19:00:00+00:00",
+			"2026-11-14T19:00:00.000Z",
+			"2026-11-14T19:00:00+05:30",
+			"2026-11-08T18:00:00"
+		],
+		dress_code: ["Festive glam — kurtas, sarees, sequins, sparkle", "Festive glam: kurtas, sarees, sequins, sparkle"]
+	};
+	function replacePlaceholders(out) {
+		const fixes = {};
+		const venueWasPlaceholder = OLD_PLACEHOLDERS.venue_address.includes(String(out.venue_address));
+		for (const [key, olds] of Object.entries(OLD_PLACEHOLDERS)) if (olds.includes(String(out[key]))) fixes[key] = DEFAULT_SETTINGS[key];
+		if (venueWasPlaceholder && !out.map_url) fixes.map_url = DEFAULT_SETTINGS.map_url;
+		Object.assign(out, fixes);
+		return fixes;
+	}
 	// \0@oxc-project+runtime@0.156.0/helpers/esm/typeof.js
 	function _typeof(o) {
 		"@babel/helpers - typeof";
@@ -649,27 +672,10 @@ var DiwaliApi = (function(exports) {
 			this.rows = null;
 		}
 	};
-	/**
-	* Placeholder values written by earlier versions of this script. If a Sheet
-	* still has them, they're swapped for the real party details in DEFAULT_SETTINGS.
-	*/
-	var OLD_PLACEHOLDERS = {
-		venue_name: ["Our Place", "Our place"],
-		venue_address: ["123 Lantern Lane, Your City", "Tap for directions"],
-		starts_at: [
-			"2026-11-14T19:00:00+00:00",
-			"2026-11-14T19:00:00.000Z",
-			"2026-11-08T18:00:00"
-		],
-		dress_code: ["Festive glam — kurtas, sarees, sequins, sparkle", "Festive glam: kurtas, sarees, sequins, sparkle"]
-	};
-	function replacePlaceholders(out) {
-		const fixes = {};
-		const venueWasPlaceholder = OLD_PLACEHOLDERS.venue_address.includes(String(out.venue_address));
-		for (const [key, olds] of Object.entries(OLD_PLACEHOLDERS)) if (olds.includes(String(out[key]))) fixes[key] = DEFAULT_SETTINGS[key];
-		if (venueWasPlaceholder && !out.map_url) fixes.map_url = DEFAULT_SETTINGS.map_url;
-		Object.assign(out, fixes);
-		return fixes;
+	/** A date typed into the Sheet: keep the clock time the host typed, in India time. */
+	function sheetDateAsIndiaTime(d) {
+		const tz = spreadsheet().getSpreadsheetTimeZone() || "Asia/Kolkata";
+		return Utilities.formatDate(d, tz, "yyyy-MM-dd'T'HH:mm:ss") + "+05:30";
 	}
 	function readSettings() {
 		const cache = CacheService.getScriptCache();
@@ -682,7 +688,7 @@ var DiwaliApi = (function(exports) {
 			const key = String(k);
 			if (!(key in DEFAULT_SETTINGS)) continue;
 			if (BOOLEAN_SETTINGS.includes(key)) out[key] = v === true || String(v).toUpperCase() === "TRUE";
-			else out[key] = v instanceof Date ? v.toISOString() : String(v !== null && v !== void 0 ? v : "");
+			else out[key] = v instanceof Date ? sheetDateAsIndiaTime(v) : String(v !== null && v !== void 0 ? v : "");
 		}
 		const fixes = replacePlaceholders(out);
 		if (Object.keys(fixes).length) writeSettings(fixes);

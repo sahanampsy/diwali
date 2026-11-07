@@ -7,16 +7,27 @@ import type { EventSettings } from '../server/types';
 export const EVENT_TIME_ZONE = 'Asia/Kolkata';
 const EVENT_UTC_OFFSET = '+05:30'; // India has no daylight saving
 
-const valid = (iso: string) => !!iso && !Number.isNaN(new Date(iso).getTime());
+/**
+ * Reads a party date. One with no time zone ("2026-11-08T18:00" or
+ * "2026-11-08 18:00") is taken as India time, never the phone's own zone.
+ */
+export function eventDate(value: string): Date {
+  const v = (value || '').trim().replace(' ', 'T');
+  const hasZone = /(Z|[+-]\d{2}:?\d{2})$/i.test(v);
+  const isDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v);
+  return new Date(isDateTime && !hasZone ? v + EVENT_UTC_OFFSET : v);
+}
+
+const valid = (iso: string) => !!iso && !Number.isNaN(eventDate(iso).getTime());
 
 export function formatDate(iso: string): string {
   if (!valid(iso)) return 'Date to be announced';
-  return new Date(iso).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: EVENT_TIME_ZONE });
+  return eventDate(iso).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: EVENT_TIME_ZONE });
 }
 
 export function formatTime(iso: string): string {
   if (!valid(iso)) return '';
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: EVENT_TIME_ZONE });
+  return eventDate(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: EVENT_TIME_ZONE });
 }
 
 export function formatTimeRange(start: string, end: string): string {
@@ -31,7 +42,7 @@ export function toLocalInput(iso: string): string {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-GB', {
       timeZone: EVENT_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-    }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]),
+    }).formatToParts(eventDate(iso)).map((x) => [x.type, x.value]),
   );
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
@@ -50,9 +61,9 @@ export function mapLink(s: EventSettings): string {
 
 /** A downloadable calendar invite. */
 export function icsFile(s: EventSettings): string {
-  const stamp = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const stamp = (iso: string) => eventDate(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const start = valid(s.starts_at) ? s.starts_at : new Date().toISOString();
-  const end = valid(s.ends_at) ? s.ends_at : new Date(new Date(start).getTime() + 5 * 3600e3).toISOString();
+  const end = valid(s.ends_at) ? s.ends_at : new Date(eventDate(start).getTime() + 5 * 3600e3).toISOString();
   const esc = (t: string) => t.replace(/[\\,;]/g, (m) => '\\' + m).replace(/\n/g, '\\n');
   return [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Diwali RSVP//EN', 'BEGIN:VEVENT',

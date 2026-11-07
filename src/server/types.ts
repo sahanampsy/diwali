@@ -179,3 +179,25 @@ export interface ApiResponse<T> {
   error?: string;
   detail?: string;
 }
+
+/**
+ * Placeholder values written by earlier versions of this script. If a Sheet
+ * still has them, they're swapped for the real party details in DEFAULT_SETTINGS.
+ */
+const OLD_PLACEHOLDERS: Partial<Record<keyof EventSettings, string[]>> = {
+  venue_name: ['Our Place', 'Our place'],
+  venue_address: ['123 Lantern Lane, Your City', 'Tap for directions'],
+  starts_at: ['2026-11-14T19:00:00+00:00', '2026-11-14T19:00:00.000Z', '2026-11-14T19:00:00+05:30', '2026-11-08T18:00:00'],
+  dress_code: ['Festive glam — kurtas, sarees, sequins, sparkle', 'Festive glam: kurtas, sarees, sequins, sparkle'],
+};
+
+export function replacePlaceholders(out: Record<string, unknown>): Partial<EventSettings> {
+  const fixes: Record<string, unknown> = {};
+  const venueWasPlaceholder = OLD_PLACEHOLDERS.venue_address!.includes(String(out.venue_address));
+  for (const [key, olds] of Object.entries(OLD_PLACEHOLDERS)) {
+    if (olds!.includes(String(out[key]))) fixes[key] = (DEFAULT_SETTINGS as unknown as Record<string, unknown>)[key];
+  }
+  if (venueWasPlaceholder && !out.map_url) fixes.map_url = DEFAULT_SETTINGS.map_url;
+  Object.assign(out, fixes);
+  return fixes as Partial<EventSettings>;
+}

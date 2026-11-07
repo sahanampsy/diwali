@@ -1,8 +1,9 @@
+import { eventDate } from '../lib/format';
 import { useNow } from '../lib/hooks';
 
 export function Countdown({ to }: { to: string }) {
   const now = useNow(1000);
-  const target = new Date(to).getTime();
+  const target = eventDate(to).getTime();
   if (!to || Number.isNaN(target)) return null;
   let diff = Math.max(0, target - now);
   if (diff === 0) {

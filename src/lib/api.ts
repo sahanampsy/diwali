@@ -1,4 +1,5 @@
 import { ApiError as CoreError } from '../server/core';
+import { replacePlaceholders } from '../server/types';
 import type {
   AdminRsvp, AdminVideo, ApiResponse, Award, EventSettings, MyRsvp,
   PartyVideo, PassInfo, ResultRow, RsvpPayload, RsvpResult, VideoMeta, VideoRow,
@@ -125,7 +126,13 @@ async function videoMeta(id: string): Promise<VideoMeta | null> {
 }
 
 export const api = {
-  getSettings: () => call<EventSettings>('getSettings'),
+  // Any placeholder still in an older Settings tab is replaced with the real details here too,
+  // so the invite is right even before the Google Script is redeployed.
+  getSettings: async () => {
+    const s = await call<EventSettings>('getSettings');
+    replacePlaceholders(s as unknown as Record<string, unknown>);
+    return s;
+  },
   getPublicStats: () => call<{ headcount: number; videos: number }>('getPublicStats'),
   submitRsvp: (payload: RsvpPayload, token: string) => call<RsvpResult>('submitRsvp', { payload, token }),
   getMyRsvp: (token: string) => call<MyRsvp | null>('getMyRsvp', { token }),
@@ -150,7 +157,11 @@ export const api = {
       call<true>('adminUpdateVideo', { id, patch }),
     recheckVideo: (id: string) => call<VideoRow>('adminRecheckVideo', { id }),
     deleteVideo: (id: string) => call<true>('adminDeleteVideo', { id }),
-    updateSettings: (patch: Partial<EventSettings>) => call<EventSettings>('adminUpdateSettings', { patch }),
+    updateSettings: async (patch: Partial<EventSettings>) => {
+      const s = await call<EventSettings>('adminUpdateSettings', { patch });
+      replacePlaceholders(s as unknown as Record<string, unknown>);
+      return s;
+    },
     resetVotes: () => call<true>('adminResetVotes'),
     clearAll: () => call<true>('adminClearAll', { confirm: 'DELETE' }),
   },
