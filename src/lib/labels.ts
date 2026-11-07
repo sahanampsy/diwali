@@ -1,4 +1,4 @@
-import type { Attending, Award, Diet, Vibe, VideoCategory } from '../server/types';
+import type { Attending, Award, Diet, LookingForward, VideoCategory } from '../server/types';
 
 export const ATTENDING_LABELS: Record<Attending, { label: string; blurb: string; emoji: string }> = {
   yes: { label: 'Yes!', blurb: 'Wouldn’t miss it', emoji: '🪔' },
@@ -23,13 +23,12 @@ export const CATEGORY_LABELS: Record<VideoCategory, { label: string; emoji: stri
   other: { label: 'Other', emoji: '✨' },
 };
 
-export const VIBE_LABELS: Record<Vibe, { label: string; emoji: string }> = {
-  vibes: { label: 'Here for the vibes', emoji: '✨' },
-  food: { label: 'Here for the food', emoji: '🍛' },
-  gossip: { label: 'Here for the gossip', emoji: '👀' },
-  dancing: { label: 'Here for the dancing', emoji: '💃' },
-  invited: { label: 'Here because I was invited', emoji: '💌' },
-  all: { label: 'All of the above', emoji: '🎆' },
+export const LOOKING_FORWARD_LABELS: Record<LookingForward, { label: string; emoji: string }> = {
+  cats: { label: 'Meeting the cats', emoji: '🐈' },
+  board_games: { label: 'Playing board games', emoji: '🎲' },
+  cocktails: { label: 'Cocktails', emoji: '🍸' },
+  watch_party: { label: 'The watch party', emoji: '📺' },
+  everything: { label: 'Everything!', emoji: '🎆' },
 };
 
 export const AWARD_LABELS: Record<Award, { label: string; emoji: string; blurb: string }> = {

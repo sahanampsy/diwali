@@ -1,6 +1,6 @@
 import { ApiError as CoreError } from '../server/core';
 import type {
-  AdminRsvp, AdminSong, AdminVideo, ApiResponse, Award, EventSettings, MyRsvp,
+  AdminRsvp, AdminVideo, ApiResponse, Award, EventSettings, MyRsvp,
   PartyVideo, PassInfo, ResultRow, RsvpPayload, RsvpResult, VideoMeta, VideoRow,
 } from '../server/types';
 import { storage } from './storage';
@@ -149,7 +149,6 @@ export const api = {
       call<true>('adminUpdateVideo', { id, patch }),
     recheckVideo: (id: string) => call<VideoRow>('adminRecheckVideo', { id }),
     deleteVideo: (id: string) => call<true>('adminDeleteVideo', { id }),
-    listSongs: () => call<AdminSong[]>('adminListSongs'),
     updateSettings: (patch: Partial<EventSettings>) => call<EventSettings>('adminUpdateSettings', { patch }),
     resetVotes: () => call<true>('adminResetVotes'),
   },

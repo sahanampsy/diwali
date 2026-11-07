@@ -3,14 +3,14 @@
 export type Attending = 'yes' | 'no' | 'maybe';
 export type Diet = 'vegetarian' | 'vegan' | 'jain' | 'non_vegetarian' | 'other';
 export type VideoCategory = 'funniest' | 'mind_blowing' | 'wholesome' | 'wtf' | 'hidden_gem' | 'other';
-export type Vibe = 'vibes' | 'food' | 'gossip' | 'dancing' | 'invited' | 'all';
+export type LookingForward = 'cats' | 'board_games' | 'cocktails' | 'watch_party' | 'everything';
 export type Award = 'funniest' | 'mind_blowing' | 'wtf' | 'hidden_gem' | 'peoples_champion';
 export type VideoStatus = 'pending' | 'approved' | 'flagged';
 
 export const ATTENDING: Attending[] = ['yes', 'no', 'maybe'];
 export const DIETS: Diet[] = ['vegetarian', 'vegan', 'jain', 'non_vegetarian', 'other'];
 export const VIDEO_CATEGORIES: VideoCategory[] = ['funniest', 'mind_blowing', 'wholesome', 'wtf', 'hidden_gem', 'other'];
-export const VIBES: Vibe[] = ['vibes', 'food', 'gossip', 'dancing', 'invited', 'all'];
+export const LOOKING_FORWARD: LookingForward[] = ['cats', 'board_games', 'cocktails', 'watch_party', 'everything'];
 export const AWARDS: Award[] = ['funniest', 'mind_blowing', 'wtf', 'hidden_gem', 'peoples_champion'];
 export const MAX_VIDEO_SECONDS = 15 * 60;
 
@@ -35,12 +35,12 @@ export const DEFAULT_SETTINGS: EventSettings = {
   event_name: 'Diwali at Ours',
   headline: "LET'S GET LIT. IT'S DIWALI!",
   subtitle: 'An evening of lights, laughter, questionable decisions and excellent company.',
-  starts_at: '2026-11-14T19:00:00+00:00',
+  starts_at: '2026-11-08T18:00:00+05:30', // Sunday 8 Nov, 6 pm IST
   ends_at: '',
-  venue_name: 'Our Place',
-  venue_address: '123 Lantern Lane, Your City',
-  map_url: '',
-  dress_code: 'Festive glam: kurtas, sarees, sequins, sparkle',
+  venue_name: 'Sagar Villa',
+  venue_address: 'Kaggadasapura, Bengaluru',
+  map_url: 'https://share.google/cUxpigm9KldLJL765',
+  dress_code: 'Kurtas, sarees, sequins, sparkle',
   host_names: 'The Hosts',
   rsvp_deadline: '',
   extra_note: '',
@@ -67,9 +67,8 @@ export interface RsvpPayload {
   diet: Diet | '';
   diet_other: string;
   allergies: string;
-  vibe: Vibe | '';
+  looking_forward: LookingForward[];
   video: VideoInput | null;
-  song: { title: string; artist: string } | null;
 }
 
 export interface RsvpResult {
@@ -130,7 +129,8 @@ export interface RsvpRow {
   diet: string;
   diet_other: string;
   allergies: string;
-  vibe: string;
+  /** Comma-separated LookingForward values. */
+  looking_forward: string;
   created_at: string;
   updated_at: string;
 }
@@ -150,14 +150,6 @@ export interface VideoRow {
   created_at: string;
 }
 
-export interface SongRow {
-  id: string;
-  rsvp_id: string;
-  title: string;
-  artist: string;
-  created_at: string;
-}
-
 export interface VoteRow {
   id: string;
   voter_code: string;
@@ -169,19 +161,15 @@ export interface VoteRow {
 
 // ---- Admin views ----
 
-export interface AdminRsvp extends Omit<RsvpRow, 'token_hash' | 'contact_normalized'> {
+export interface AdminRsvp extends Omit<RsvpRow, 'token_hash' | 'contact_normalized' | 'looking_forward'> {
+  looking_forward: LookingForward[];
   headcount: number;
   video_title: string;
-  song: string;
 }
 
 export interface AdminVideo extends VideoRow {
   submitter: string;
   votes: number;
-}
-
-export interface AdminSong extends SongRow {
-  requested_by: string;
 }
 
 export interface ApiResponse<T> {

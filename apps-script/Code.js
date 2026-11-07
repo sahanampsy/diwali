@@ -22,13 +22,12 @@ var DiwaliApi = (function(exports) {
 		"hidden_gem",
 		"other"
 	];
-	var VIBES = [
-		"vibes",
-		"food",
-		"gossip",
-		"dancing",
-		"invited",
-		"all"
+	var LOOKING_FORWARD = [
+		"cats",
+		"board_games",
+		"cocktails",
+		"watch_party",
+		"everything"
 	];
 	var AWARDS = [
 		"funniest",
@@ -41,12 +40,12 @@ var DiwaliApi = (function(exports) {
 		event_name: "Diwali at Ours",
 		headline: "LET'S GET LIT. IT'S DIWALI!",
 		subtitle: "An evening of lights, laughter, questionable decisions and excellent company.",
-		starts_at: "2026-11-14T19:00:00+00:00",
+		starts_at: "2026-11-08T18:00:00+05:30",
 		ends_at: "",
-		venue_name: "Our Place",
-		venue_address: "123 Lantern Lane, Your City",
-		map_url: "",
-		dress_code: "Festive glam: kurtas, sarees, sequins, sparkle",
+		venue_name: "Sagar Villa",
+		venue_address: "Kaggadasapura, Bengaluru",
+		map_url: "https://share.google/cUxpigm9KldLJL765",
+		dress_code: "Kurtas, sarees, sequins, sparkle",
 		host_names: "The Hosts",
 		rsvp_deadline: "",
 		extra_note: "",
@@ -126,6 +125,7 @@ var DiwaliApi = (function(exports) {
 		}
 	}
 	var headcount = (r) => r.attending === "no" ? 0 : 1 + (r.plus_one ? 1 : 0);
+	var parseLooking = (v) => LOOKING_FORWARD.filter((x) => (v || "").split(",").includes(x));
 	function validToken(token) {
 		return typeof token === "string" && token.length >= 32 && token.length <= 128;
 	}
@@ -160,7 +160,9 @@ var DiwaliApi = (function(exports) {
 		const plus_one_name = plus_one ? str(p.plus_one_name, 100) : "";
 		if (plus_one && !plus_one_name) fail("PLUS_ONE_NAME_REQUIRED");
 		const diet = going && DIETS.includes(p.diet) ? p.diet : "";
-		const vibe = going && VIBES.includes(p.vibe) ? p.vibe : "";
+		const picked = going && Array.isArray(p.looking_forward) ? p.looking_forward : [];
+		let looking = LOOKING_FORWARD.filter((x) => picked.includes(x));
+		if (looking.includes("everything")) looking = ["everything"];
 		let video = null;
 		if (going && p.video && str(p.video.youtube_id, 11)) {
 			const yt = str(p.video.youtube_id, 11);
@@ -200,7 +202,7 @@ var DiwaliApi = (function(exports) {
 			diet,
 			diet_other: diet === "other" ? str(p.diet_other, 200) : "",
 			allergies: going ? str(p.allergies, 500) : "",
-			vibe,
+			looking_forward: looking.join(","),
 			updated_at: now
 		};
 		let row;
@@ -248,24 +250,6 @@ var DiwaliApi = (function(exports) {
 			admin_note: "",
 			created_at: now
 		});
-		const songTitle = going && p.song ? str(p.song.title, 200) : "";
-		const oldSong = store.songs.all().find((s) => s.rsvp_id === row.id);
-		if (!songTitle) {
-			if (oldSong) store.songs.remove(oldSong.id);
-		} else {
-			var _p$song;
-			const song = {
-				title: songTitle,
-				artist: str((_p$song = p.song) === null || _p$song === void 0 ? void 0 : _p$song.artist, 200)
-			};
-			if (oldSong) store.songs.update(oldSong.id, song);
-			else store.songs.insert({
-				id: env.uuid(),
-				rsvp_id: row.id,
-				created_at: now,
-				...song
-			});
-		}
 		return {
 			pass_code: row.pass_code,
 			plus_one_pass_code: row.plus_one_pass_code,
@@ -279,7 +263,6 @@ var DiwaliApi = (function(exports) {
 	}
 	function removeRsvp(store, rsvpId) {
 		for (const v of store.videos.all()) if (v.rsvp_id === rsvpId) removeVideo(store, v.id);
-		for (const s of store.songs.all()) if (s.rsvp_id === rsvpId) store.songs.remove(s.id);
 		for (const v of store.votes.all()) if (v.rsvp_id === rsvpId) store.votes.remove(v.id);
 		store.rsvps.remove(rsvpId);
 	}
@@ -288,7 +271,6 @@ var DiwaliApi = (function(exports) {
 		const r = store.rsvps.all().find((x) => x.token_hash === env.sha256(token));
 		if (!r) return null;
 		const v = store.videos.all().find((x) => x.rsvp_id === r.id);
-		const s = store.songs.all().find((x) => x.rsvp_id === r.id);
 		return {
 			full_name: r.full_name,
 			attending: r.attending,
@@ -298,7 +280,7 @@ var DiwaliApi = (function(exports) {
 			diet: r.diet,
 			diet_other: r.diet_other,
 			allergies: r.allergies,
-			vibe: r.vibe,
+			looking_forward: parseLooking(r.looking_forward),
 			video: v ? {
 				youtube_id: v.youtube_id,
 				title: v.title,
@@ -307,10 +289,6 @@ var DiwaliApi = (function(exports) {
 				duration_seconds: v.duration_seconds
 			} : null,
 			video_status: v ? v.status : null,
-			song: s ? {
-				title: s.title,
-				artist: s.artist
-			} : null,
 			pass_code: r.pass_code,
 			plus_one_pass_code: r.plus_one_pass_code,
 			headcount: headcount(r)
@@ -405,15 +383,13 @@ var DiwaliApi = (function(exports) {
 	}
 	function adminRsvps(store) {
 		const videos = store.videos.all();
-		const songs = store.songs.all();
-		return store.rsvps.all().sort((a, b) => b.created_at.localeCompare(a.created_at)).map(({ token_hash: _t, contact_normalized: _c, ...r }) => {
+		return store.rsvps.all().sort((a, b) => b.created_at.localeCompare(a.created_at)).map(({ token_hash: _t, contact_normalized: _c, looking_forward, ...r }) => {
 			var _videos$find$title, _videos$find;
-			const s = songs.find((x) => x.rsvp_id === r.id);
 			return {
 				...r,
 				headcount: headcount(r),
-				video_title: (_videos$find$title = (_videos$find = videos.find((v) => v.rsvp_id === r.id)) === null || _videos$find === void 0 ? void 0 : _videos$find.title) !== null && _videos$find$title !== void 0 ? _videos$find$title : "",
-				song: s ? s.title + (s.artist ? " – " + s.artist : "") : ""
+				looking_forward: parseLooking(looking_forward),
+				video_title: (_videos$find$title = (_videos$find = videos.find((v) => v.rsvp_id === r.id)) === null || _videos$find === void 0 ? void 0 : _videos$find.title) !== null && _videos$find$title !== void 0 ? _videos$find$title : ""
 			};
 		});
 	}
@@ -426,16 +402,6 @@ var DiwaliApi = (function(exports) {
 				...v,
 				submitter: (_names$get2 = names.get(v.rsvp_id)) !== null && _names$get2 !== void 0 ? _names$get2 : "",
 				votes: votes.filter((x) => x.video_id === v.id).length
-			};
-		});
-	}
-	function adminSongs(store) {
-		const names = new Map(store.rsvps.all().map((r) => [r.id, r.full_name]));
-		return store.songs.all().map((s) => {
-			var _names$get3;
-			return {
-				...s,
-				requested_by: (_names$get3 = names.get(s.rsvp_id)) !== null && _names$get3 !== void 0 ? _names$get3 : ""
 			};
 		});
 	}
@@ -539,7 +505,6 @@ var DiwaliApi = (function(exports) {
 			case "adminDeleteVideo":
 				removeVideo(store, str(args.id, 64));
 				return true;
-			case "adminListSongs": return adminSongs(store);
 			case "adminUpdateSettings":
 				var _args$patch2;
 				store.saveSettings(cleanSettings((_args$patch2 = args.patch) !== null && _args$patch2 !== void 0 ? _args$patch2 : {}));
@@ -558,15 +523,11 @@ var DiwaliApi = (function(exports) {
 	var TABLES = {
 		rsvps: {
 			sheet: "RSVPs",
-			cols: T("id full_name attending plus_one:bool plus_one_name contact diet diet_other allergies vibe pass_code plus_one_pass_code created_at updated_at contact_normalized token_hash")
+			cols: T("id full_name attending plus_one:bool plus_one_name contact diet diet_other allergies looking_forward pass_code plus_one_pass_code created_at updated_at contact_normalized token_hash")
 		},
 		videos: {
 			sheet: "Videos",
 			cols: T("id rsvp_id youtube_id url title reason category duration_seconds:num duration_verified:bool status admin_note created_at")
-		},
-		songs: {
-			sheet: "Songs",
-			cols: T("id rsvp_id title artist created_at")
 		},
 		votes: {
 			sheet: "Votes",
@@ -706,7 +667,6 @@ var DiwaliApi = (function(exports) {
 		return {
 			rsvps: new SheetTable(TABLES.rsvps),
 			videos: new SheetTable(TABLES.videos),
-			songs: new SheetTable(TABLES.songs),
 			votes: new SheetTable(TABLES.votes),
 			getSettings: readSettings,
 			saveSettings: writeSettings

@@ -7,12 +7,12 @@ import { api, errorCode, errorMessage } from '../lib/api';
 import { download } from '../lib/csv';
 import { formatDate, formatTimeRange, icsFile } from '../lib/format';
 import { useAsync } from '../lib/hooks';
-import { ATTENDING_LABELS, CATEGORY_LABELS, DIET_LABELS, VIBE_LABELS } from '../lib/labels';
+import { ATTENDING_LABELS, CATEGORY_LABELS, DIET_LABELS, LOOKING_FORWARD_LABELS } from '../lib/labels';
 import { guestToken, hasSubmitted, markSubmitted, savePass } from '../lib/storage';
 import { formatDuration, parseYouTubeId, thumbnail } from '../lib/youtube';
 import {
-  ATTENDING, DIETS, MAX_VIDEO_SECONDS, VIBES, VIDEO_CATEGORIES,
-  type Attending, type Diet, type EventSettings, type RsvpPayload, type RsvpResult, type Vibe, type VideoCategory, type VideoMeta,
+  ATTENDING, DIETS, LOOKING_FORWARD, MAX_VIDEO_SECONDS, VIDEO_CATEGORIES,
+  type Attending, type Diet, type EventSettings, type LookingForward, type RsvpPayload, type RsvpResult, type VideoCategory, type VideoMeta,
 } from '../server/types';
 
 interface FormState {
@@ -28,26 +28,30 @@ interface FormState {
   video_title: string;
   video_reason: string;
   video_category: VideoCategory | '';
-  vibe: Vibe | '';
-  song_title: string;
-  song_artist: string;
+  looking_forward: LookingForward[];
 }
 
 const EMPTY: FormState = {
   full_name: '', attending: '', plus_one: null, plus_one_name: '', contact: '', diet: '', diet_other: '', allergies: '',
-  video_url: '', video_title: '', video_reason: '', video_category: '', vibe: '', song_title: '', song_artist: '',
+  video_url: '', video_title: '', video_reason: '', video_category: '', looking_forward: [],
 };
 
 const STEPS = [
   { key: 'guest', title: 'The Guest List', emoji: '📜' },
   { key: 'food', title: 'The Feast', emoji: '🍛' },
   { key: 'video', title: 'The Watch Party', emoji: '📺' },
-  { key: 'vibe', title: 'Vibe Check', emoji: '✨' },
-  { key: 'song', title: 'The Dance Floor', emoji: '💃' },
+  { key: 'excited', title: 'The Good Stuff', emoji: '✨' },
 ] as const;
 
 type Errors = Partial<Record<keyof FormState | 'form', string>>;
 type MetaState = { id: string; status: 'loading' | 'done' | 'failed'; meta: VideoMeta | null } | null;
+
+/** "Everything!" stands alone; picking anything else replaces it. */
+function toggleLooking(current: LookingForward[], v: LookingForward): LookingForward[] {
+  if (current.includes(v)) return current.filter((x) => x !== v);
+  if (v === 'everything') return ['everything'];
+  return [...current.filter((x) => x !== 'everything'), v];
+}
 
 const looksLikeContact = (v: string) => {
   const t = v.trim();
@@ -87,8 +91,7 @@ export default function Rsvp() {
           full_name: r.full_name, attending: r.attending, plus_one: r.plus_one, plus_one_name: r.plus_one_name,
           contact: r.contact, diet: r.diet, diet_other: r.diet_other, allergies: r.allergies,
           video_url: r.video ? 'https://youtu.be/' + r.video.youtube_id : '', video_title: r.video?.title ?? '',
-          video_reason: r.video?.reason ?? '', video_category: r.video?.category ?? '', vibe: r.vibe,
-          song_title: r.song?.title ?? '', song_artist: r.song?.artist ?? '',
+          video_reason: r.video?.reason ?? '', video_category: r.video?.category ?? '', looking_forward: r.looking_forward ?? [],
         });
       })
       .catch(() => undefined)
@@ -164,9 +167,8 @@ export default function Rsvp() {
 
   const skip = () => {
     if (step === 1) setForm((f) => ({ ...f, diet: '', diet_other: '', allergies: '' }));
-    if (step === 3) set('vibe', '');
-    if (step === 4) setForm((f) => ({ ...f, song_title: '', song_artist: '' }));
-    if (step === STEPS.length - 1) submit({ song_title: '', song_artist: '' });
+    if (step === 3) set('looking_forward', []);
+    if (step === STEPS.length - 1) submit({ looking_forward: [] });
     else go(step + 1);
   };
 
@@ -187,7 +189,7 @@ export default function Rsvp() {
       diet: f.diet,
       diet_other: f.diet_other,
       allergies: f.allergies,
-      vibe: f.vibe,
+      looking_forward: f.looking_forward,
       video:
         videoId && f.video_url.trim() && !declining
           ? {
@@ -198,7 +200,6 @@ export default function Rsvp() {
               duration_seconds: meta?.meta?.duration_seconds ?? null,
             }
           : null,
-      song: f.song_title.trim() && !declining ? { title: f.song_title.trim(), artist: f.song_artist.trim() } : null,
     };
     setSubmitting(true);
     setErrors({});
@@ -444,32 +445,22 @@ export default function Rsvp() {
 
           {step === 3 && (
             <>
-              <p className="kicker">Diwali vibe check</p>
-              <h1 className="step-title">What’s your energy for the night?</h1>
-              <div className="choice-grid choice-grid-2" role="radiogroup">
-                {VIBES.map((v) => (
-                  <button type="button" key={v} role="radio" aria-checked={form.vibe === v}
-                    className={`choice ${form.vibe === v ? 'is-selected' : ''}`} onClick={() => set('vibe', v)}>
-                    <span className="choice-emoji">{VIBE_LABELS[v].emoji}</span>
-                    <span className="choice-label">{VIBE_LABELS[v].label}</span>
-                  </button>
-                ))}
+              <p className="kicker">Almost done</p>
+              <h1 className="step-title">What are you looking forward to?</h1>
+              <p className="step-sub">Pick as many as you like.</p>
+              <div className="choice-grid choice-grid-2" role="group" aria-label="What are you looking forward to?">
+                {LOOKING_FORWARD.map((v) => {
+                  const on = form.looking_forward.includes(v);
+                  return (
+                    <button type="button" key={v} aria-pressed={on}
+                      className={`choice ${on ? 'is-selected' : ''} ${v === 'everything' ? 'choice-wide' : ''}`}
+                      onClick={() => set('looking_forward', toggleLooking(form.looking_forward, v))}>
+                      <span className="choice-emoji">{LOOKING_FORWARD_LABELS[v].emoji}</span>
+                      <span className="choice-label">{LOOKING_FORWARD_LABELS[v].label}</span>
+                    </button>
+                  );
+                })}
               </div>
-            </>
-          )}
-
-          {step === 4 && (
-            <>
-              <p className="kicker">Song request</p>
-              <h1 className="step-title">What’s ONE song that will get you on the dance floor?</h1>
-              <Field label="Song" htmlFor="song_title">
-                <input id="song_title" className="input" placeholder="e.g. Kala Chashma" value={form.song_title}
-                  onChange={(e) => set('song_title', e.target.value)} maxLength={200} />
-              </Field>
-              <Field label="Artist" htmlFor="song_artist">
-                <input id="song_artist" className="input" placeholder="e.g. Badshah" value={form.song_artist}
-                  onChange={(e) => set('song_artist', e.target.value)} maxLength={200} />
-              </Field>
             </>
           )}
         </div>

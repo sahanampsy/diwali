@@ -855,6 +855,7 @@ select.input-sm { flex: none; }
 .choice-emoji { font-size: 1.7rem; line-height: 1; }
 .choice-label { font-weight: 600; font-size: 0.95rem; line-height: 1.2; }
 .choice-blurb { font-size: 0.75rem; color: var(--muted); line-height: 1.2; }
+.choice-wide { grid-column: 1 / -1; min-height: 64px; flex-direction: row; gap: 10px; }
 .choice-row { flex-direction: row; justify-content: flex-start; min-height: 60px; gap: 10px; text-align: left; padding: 12px 14px; }
 .choice-row .choice-emoji { font-size: 1.4rem; }
 .choice-no.is-selected { background: linear-gradient(160deg, rgba(120, 140, 255, 0.18), rgba(224, 33, 138, 0.1)); }
@@ -1554,29 +1555,6 @@ select.input-sm { flex: none; }
 }
 .icon-btn.is-on { border-color: var(--gold); color: var(--gold-hi); background: rgba(245, 195, 91, 0.12); }
 
-.song-list { list-style: none; counter-reset: song; margin: 0; padding: 0; display: grid; gap: 8px; }
-.song-list li {
-  counter-increment: song;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: var(--glass);
-  border: 1px solid rgba(255, 244, 224, 0.1);
-}
-.song-list li::before {
-  content: counter(song);
-  font-family: var(--serif);
-  font-weight: 700;
-  color: var(--gold);
-  min-width: 1.6em;
-}
-.song-list li > div:first-of-type { flex: 1; min-width: 0; }
-.song-title { font-weight: 600; margin: 0; }
-.song-list .muted { margin: 0; }
-.song-links { display: flex; gap: 10px; font-size: 0.82rem; flex: none; }
 
 .party-control { display: grid; gap: 16px; }
 .phase-track { display: flex; gap: 6px; flex-wrap: wrap; }

@@ -3,9 +3,9 @@
 A festive, mobile-first RSVP site for a Diwali house party, with Google Sheets as the database.
 
 - **Invite page**: animated diyas, marigold garland, countdown, and event details you can edit.
-- **5-level RSVP game**: guest list (with plus ones and a live headcount), food, the **YouTube Watch Party** submission, vibe check, and a song request. A guest who says "No" can send regrets straight from level 1.
+- **4-level RSVP game**: guest list (with plus ones and a live headcount), food, the **YouTube Watch Party** submission, and what they're looking forward to (cats, board games, cocktails, the watch party, or everything; pick several). A guest who says "No" can send regrets straight from level 1.
 - **Confirmation** with fireworks, a calendar invite, and a **party pass** code for voting.
-- **Host dashboard** (`/admin`, password protected): RSVPs, videos, songs, Party Control, and event details.
+- **Host dashboard** (`/admin`, password protected): RSVPs, videos, Party Control, and event details.
 - **Watch party screen** (`/party`) for the TV: gallery and player, and the leaderboard.
 - **Guest voting** (`/vote`) on phones: one locked vote per award, and no voting for your own video.
 
@@ -49,7 +49,7 @@ The host password in demo mode is `diwali`.
      This turns on the YouTube service used for the length checks.
    - In **Project Settings → Script properties**, add `ADMIN_PASSWORD` with the host password of your choice.
 3. **Run setup.** Choose `setup` in the function drop-down and click **Run**, then approve the permissions.
-   This creates the tabs: Settings, RSVPs, Videos, Songs and Votes.
+   This creates the tabs: Settings, RSVPs, Videos and Votes.
 4. **Deploy.** Go to **Deploy → New deployment → Web app**. Set **Execute as: Me** and **Who has access: Anyone**, then click **Deploy**.
    Copy the **Web app URL**, which ends in `/exec`.
 5. **Connect the site.** Copy `.env.example` to `.env.local` and set:
@@ -80,9 +80,8 @@ Every approved video can win any award.
 
 ## Exports
 
-- RSVPs → CSV, including plus ones, diet, allergies, vibe and party passes.
+- RSVPs → CSV, including plus ones, diet, allergies, what they're looking forward to, and party passes.
 - Videos → CSV, including URL, submitter, category, length, status and votes.
-- Songs → CSV, plus **Copy as list** to paste into a playlist importer such as TuneMyMusic or Soundiiz.
 
 ## Project layout
 
@@ -95,6 +94,8 @@ src/lib/demoBackend.ts  runs core.ts in the browser with localStorage
 src/pages/              Landing, Rsvp, Vote, Party, admin/*
 apps-script/            GENERATED Code.js + manifest to paste into Apps Script
 ```
+
+All times are shown in India time (IST), set in `src/lib/format.ts`.
 
 Scripts: `npm run dev`, `npm run build`, `npm run typecheck`, `npm run build:gas`.
 

@@ -1,35 +1,46 @@
 import type { EventSettings } from '../server/types';
 
+/**
+ * The party's time zone. Every time is shown in it, whatever the guest's phone
+ * is set to, so 6 pm in Bengaluru always reads "6:00 pm".
+ */
+export const EVENT_TIME_ZONE = 'Asia/Kolkata';
+const EVENT_UTC_OFFSET = '+05:30'; // India has no daylight saving
+
 const valid = (iso: string) => !!iso && !Number.isNaN(new Date(iso).getTime());
 
 export function formatDate(iso: string): string {
   if (!valid(iso)) return 'Date to be announced';
-  return new Date(iso).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(iso).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: EVENT_TIME_ZONE });
 }
 
 export function formatTime(iso: string): string {
   if (!valid(iso)) return '';
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: EVENT_TIME_ZONE });
 }
 
 export function formatTimeRange(start: string, end: string): string {
   const s = formatTime(start);
   const e = formatTime(end);
-  return s && e ? `${s} – ${e}` : s ? `${s} till late` : 'Time to be announced';
+  return s && e ? `${s} – ${e}` : s ? `${s} onwards` : 'Time to be announced';
 }
 
-/** ISO → value for <input type="datetime-local"> in the viewer's time zone. */
+/** ISO → value for <input type="datetime-local">, in the party's time zone. */
 export function toLocalInput(iso: string): string {
   if (!valid(iso)) return '';
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: EVENT_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 
+/** <input type="datetime-local"> value, read as party time → ISO. */
 export function fromLocalInput(v: string): string {
   if (!v) return '';
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
+  const iso = `${v.length === 16 ? v + ':00' : v}${EVENT_UTC_OFFSET}`;
+  return valid(iso) ? iso : '';
 }
 
 export function mapLink(s: EventSettings): string {

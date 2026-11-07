@@ -4,10 +4,10 @@
 // Everything here is synchronous, because Apps Script web apps must answer synchronously.
 
 import {
-  ATTENDING, AWARDS, DIETS, MAX_VIDEO_SECONDS, VIBES, VIDEO_CATEGORIES,
-  type AdminRsvp, type AdminSong, type AdminVideo, type Award,
+  ATTENDING, AWARDS, DIETS, LOOKING_FORWARD, MAX_VIDEO_SECONDS, VIDEO_CATEGORIES,
+  type AdminRsvp, type AdminVideo, type Award, type LookingForward,
   type EventSettings, type MyRsvp, type PartyVideo, type PassInfo, type ResultRow, type RsvpPayload,
-  type RsvpResult, type RsvpRow, type SongRow, type VideoCategory, type VideoMeta, type VideoRow,
+  type RsvpResult, type RsvpRow, type VideoCategory, type VideoMeta, type VideoRow,
   type VideoStatus, type VoteRow,
 } from './types';
 
@@ -21,7 +21,6 @@ export interface Table<T extends { id: string }> {
 export interface Store {
   rsvps: Table<RsvpRow>;
   videos: Table<VideoRow>;
-  songs: Table<SongRow>;
   votes: Table<VoteRow>;
   getSettings(): EventSettings;
   saveSettings(patch: Partial<EventSettings>): void;
@@ -87,6 +86,9 @@ function newPassCode(store: Store, env: Env): string {
 const headcount = (r: Pick<RsvpRow, 'attending' | 'plus_one'>) =>
   r.attending === 'no' ? 0 : 1 + (r.plus_one ? 1 : 0);
 
+export const parseLooking = (v: string): LookingForward[] =>
+  LOOKING_FORWARD.filter((x) => (v || '').split(',').includes(x));
+
 function validToken(token: unknown): token is string {
   return typeof token === 'string' && token.length >= 32 && token.length <= 128;
 }
@@ -127,7 +129,9 @@ export function submitRsvp(store: Store, env: Env, p: Partial<RsvpPayload>, toke
   const plus_one_name = plus_one ? str(p.plus_one_name, 100) : '';
   if (plus_one && !plus_one_name) fail('PLUS_ONE_NAME_REQUIRED');
   const diet = going && DIETS.includes(p.diet as never) ? (p.diet as string) : '';
-  const vibe = going && VIBES.includes(p.vibe as never) ? (p.vibe as string) : '';
+  const picked = going && Array.isArray(p.looking_forward) ? p.looking_forward : [];
+  let looking: LookingForward[] = LOOKING_FORWARD.filter((x) => picked.includes(x));
+  if (looking.includes('everything')) looking = ['everything'];
 
   // Validate the video before writing anything.
   let video: Omit<VideoRow, 'id' | 'rsvp_id' | 'status' | 'admin_note' | 'created_at'> | null = null;
@@ -171,7 +175,7 @@ export function submitRsvp(store: Store, env: Env, p: Partial<RsvpPayload>, toke
     diet,
     diet_other: diet === 'other' ? str(p.diet_other, 200) : '',
     allergies: going ? str(p.allergies, 500) : '',
-    vibe,
+    looking_forward: looking.join(','),
     updated_at: now,
   };
 
@@ -218,17 +222,6 @@ export function submitRsvp(store: Store, env: Env, p: Partial<RsvpPayload>, toke
     store.videos.insert({ ...video, id: env.uuid(), rsvp_id: row.id, status: 'pending', admin_note: '', created_at: now });
   }
 
-  // Song request
-  const songTitle = going && p.song ? str(p.song.title, 200) : '';
-  const oldSong = store.songs.all().find((s) => s.rsvp_id === row.id);
-  if (!songTitle) {
-    if (oldSong) store.songs.remove(oldSong.id);
-  } else {
-    const song = { title: songTitle, artist: str(p.song?.artist, 200) };
-    if (oldSong) store.songs.update(oldSong.id, song);
-    else store.songs.insert({ id: env.uuid(), rsvp_id: row.id, created_at: now, ...song });
-  }
-
   return { pass_code: row.pass_code, plus_one_pass_code: row.plus_one_pass_code, attending: row.attending, headcount: headcount(row) };
 }
 
@@ -239,7 +232,6 @@ function removeVideo(store: Store, videoId: string) {
 
 function removeRsvp(store: Store, rsvpId: string) {
   for (const v of store.videos.all()) if (v.rsvp_id === rsvpId) removeVideo(store, v.id);
-  for (const s of store.songs.all()) if (s.rsvp_id === rsvpId) store.songs.remove(s.id);
   for (const v of store.votes.all()) if (v.rsvp_id === rsvpId) store.votes.remove(v.id);
   store.rsvps.remove(rsvpId);
 }
@@ -249,7 +241,6 @@ export function getMyRsvp(store: Store, env: Env, token: unknown): MyRsvp | null
   const r = store.rsvps.all().find((x) => x.token_hash === env.sha256(token));
   if (!r) return null;
   const v = store.videos.all().find((x) => x.rsvp_id === r.id);
-  const s = store.songs.all().find((x) => x.rsvp_id === r.id);
   return {
     full_name: r.full_name,
     attending: r.attending,
@@ -259,12 +250,11 @@ export function getMyRsvp(store: Store, env: Env, token: unknown): MyRsvp | null
     diet: r.diet as MyRsvp['diet'],
     diet_other: r.diet_other,
     allergies: r.allergies,
-    vibe: r.vibe as MyRsvp['vibe'],
+    looking_forward: parseLooking(r.looking_forward),
     video: v
       ? { youtube_id: v.youtube_id, title: v.title, reason: v.reason, category: v.category, duration_seconds: v.duration_seconds }
       : null,
     video_status: v ? v.status : null,
-    song: s ? { title: s.title, artist: s.artist } : null,
     pass_code: r.pass_code,
     plus_one_pass_code: r.plus_one_pass_code,
     headcount: headcount(r),
@@ -361,17 +351,15 @@ export function isAdminToken(env: Env, token: unknown): boolean {
 
 function adminRsvps(store: Store): AdminRsvp[] {
   const videos = store.videos.all();
-  const songs = store.songs.all();
   return store.rsvps
     .all()
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
-    .map(({ token_hash: _t, contact_normalized: _c, ...r }) => {
-      const s = songs.find((x) => x.rsvp_id === r.id);
+    .map(({ token_hash: _t, contact_normalized: _c, looking_forward, ...r }) => {
       return {
         ...r,
         headcount: headcount(r),
+        looking_forward: parseLooking(looking_forward),
         video_title: videos.find((v) => v.rsvp_id === r.id)?.title ?? '',
-        song: s ? s.title + (s.artist ? ' – ' + s.artist : '') : '',
       };
     });
 }
@@ -383,11 +371,6 @@ function adminVideos(store: Store): AdminVideo[] {
     .all()
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .map((v) => ({ ...v, submitter: names.get(v.rsvp_id) ?? '', votes: votes.filter((x) => x.video_id === v.id).length }));
-}
-
-function adminSongs(store: Store): AdminSong[] {
-  const names = new Map(store.rsvps.all().map((r) => [r.id, r.full_name]));
-  return store.songs.all().map((s) => ({ ...s, requested_by: names.get(s.rsvp_id) ?? '' }));
 }
 
 const SETTINGS_KEYS: (keyof EventSettings)[] = [
@@ -479,8 +462,6 @@ export function handle(store: Store, env: Env, action: string, args: Record<stri
     case 'adminDeleteVideo':
       removeVideo(store, str(args.id, 64));
       return true;
-    case 'adminListSongs':
-      return adminSongs(store);
     case 'adminUpdateSettings':
       store.saveSettings(cleanSettings((args.patch ?? {}) as Record<string, unknown>));
       return store.getSettings();

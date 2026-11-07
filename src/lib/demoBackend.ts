@@ -4,17 +4,16 @@
 
 import { handle, type Env, type Store, type Table } from '../server/core';
 import {
-  DEFAULT_SETTINGS, type EventSettings, type RsvpRow, type SongRow, type VideoRow, type VoteRow,
+  DEFAULT_SETTINGS, type EventSettings, type RsvpRow, type VideoRow, type VoteRow,
 } from '../server/types';
 
-const KEY = 'diwali.demoDb.v2';
+const KEY = 'diwali.demoDb.v3';
 export const DEMO_PASSWORD = 'diwali';
 
 interface Db {
   settings: EventSettings;
   rsvps: RsvpRow[];
   videos: VideoRow[];
-  songs: SongRow[];
   votes: VoteRow[];
 }
 
@@ -38,7 +37,7 @@ function seed(): Db {
   const rsvp = (id: string, name: string, attending: RsvpRow['attending'], extra: Partial<RsvpRow> = {}): RsvpRow => ({
     id, token_hash: 'seed-' + id, pass_code: ('DEMO' + id.toUpperCase()).slice(0, 6), plus_one_pass_code: '',
     full_name: name, attending, plus_one: false, plus_one_name: '', contact: id + '@example.com',
-    contact_normalized: id + '@example.com', diet: 'vegetarian', diet_other: '', allergies: '', vibe: 'all',
+    contact_normalized: id + '@example.com', diet: 'vegetarian', diet_other: '', allergies: '', looking_forward: 'everything',
     created_at: at(600 - id.charCodeAt(0)), updated_at: at(60), ...extra,
   });
   const video = (id: string, rsvp_id: string, youtube_id: string, title: string, category: VideoRow['category'], duration: number, reason: string, status: VideoRow['status'] = 'approved'): VideoRow => ({
@@ -47,24 +46,19 @@ function seed(): Db {
   });
 
   return {
-    settings: { ...DEFAULT_SETTINGS, starts_at: inAWeek.toISOString(), host_names: 'Priya & Sam', venue_name: 'The Lantern House' },
+    settings: { ...DEFAULT_SETTINGS, starts_at: inAWeek.toISOString(), host_names: 'Priya & Sam' },
     rsvps: [
-      rsvp('ar', 'Arjun Mehta', 'yes', { plus_one: true, plus_one_name: 'Kavya Iyer', plus_one_pass_code: 'DEMOKI', diet: 'jain', vibe: 'dancing' }),
-      rsvp('ns', 'Nisha Shah', 'yes', { diet: 'vegan', allergies: 'Tree nuts', vibe: 'gossip' }),
-      rsvp('tom', 'Tom Hughes', 'yes', { diet: 'non_vegetarian', vibe: 'food', plus_one: true, plus_one_name: 'Ella Hughes', plus_one_pass_code: 'DEMOEH' }),
-      rsvp('ri', 'Riya Kapoor', 'maybe', { vibe: 'vibes' }),
-      rsvp('ben', 'Ben Okafor', 'no', { diet: '', vibe: '' }),
+      rsvp('ar', 'Arjun Mehta', 'yes', { plus_one: true, plus_one_name: 'Kavya Iyer', plus_one_pass_code: 'DEMOKI', diet: 'jain', looking_forward: 'cats,board_games' }),
+      rsvp('ns', 'Nisha Shah', 'yes', { diet: 'vegan', allergies: 'Tree nuts', looking_forward: 'cocktails,watch_party' }),
+      rsvp('tom', 'Tom Hughes', 'yes', { diet: 'non_vegetarian', looking_forward: 'board_games', plus_one: true, plus_one_name: 'Ella Hughes', plus_one_pass_code: 'DEMOEH' }),
+      rsvp('ri', 'Riya Kapoor', 'maybe', { looking_forward: 'cats' }),
+      rsvp('ben', 'Ben Okafor', 'no', { diet: '', looking_forward: '' }),
     ],
     videos: [
       video('v1', 'ar', 'jNQXAC9IVRw', 'Me at the zoo', 'hidden_gem', 19, 'The first video ever uploaded. 19 seconds of history.'),
       video('v2', 'ns', 'dQw4w9WgXcQ', 'Never Gonna Give You Up', 'wtf', 213, 'You know exactly why.'),
-      video('v3', 'tom', '9bZkp7q19f0', 'Gangnam Style', 'funniest', 252, 'Dance floor warm-up. Non-negotiable.'),
+      video('v3', 'tom', '9bZkp7q19f0', 'Gangnam Style', 'funniest', 252, 'A classic. Non-negotiable.'),
       video('v4', 'ri', 'txqiwrbYGrs', 'David After Dentist', 'funniest', 119, 'Is this real life?', 'pending'),
-    ],
-    songs: [
-      { id: 's1', rsvp_id: 'ar', title: 'Kala Chashma', artist: 'Badshah', created_at: at(300) },
-      { id: 's2', rsvp_id: 'ns', title: 'London Thumakda', artist: 'Labh Janjua', created_at: at(200) },
-      { id: 's3', rsvp_id: 'tom', title: 'Mr. Brightside', artist: 'The Killers', created_at: at(100) },
     ],
     votes: [],
   };
@@ -98,7 +92,7 @@ export function resetDemo() {
   }
 }
 
-function table<K extends 'rsvps' | 'videos' | 'songs' | 'votes'>(db: Db, key: K): Table<Db[K][number]> {
+function table<K extends 'rsvps' | 'videos' | 'votes'>(db: Db, key: K): Table<Db[K][number]> {
   type R = Db[K][number];
   return {
     all: () => (db[key] as R[]).slice(),
@@ -145,7 +139,6 @@ export async function demoCall(action: string, args: Record<string, unknown>): P
   const store: Store = {
     rsvps: table(db, 'rsvps'),
     videos: table(db, 'videos'),
-    songs: table(db, 'songs'),
     votes: table(db, 'votes'),
     getSettings: () => ({ ...db.settings }),
     saveSettings: (patch) => {

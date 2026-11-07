@@ -31,18 +31,17 @@ const T = (cols: string): [string, Kind][] =>
     return [name, (kind as Kind) || 'text'];
   });
 
-const TABLES: Record<'rsvps' | 'videos' | 'songs' | 'votes', TableDef> = {
+const TABLES: Record<'rsvps' | 'videos' | 'votes', TableDef> = {
   rsvps: {
     sheet: 'RSVPs',
     cols: T(
-      'id full_name attending plus_one:bool plus_one_name contact diet diet_other allergies vibe pass_code plus_one_pass_code created_at updated_at contact_normalized token_hash',
+      'id full_name attending plus_one:bool plus_one_name contact diet diet_other allergies looking_forward pass_code plus_one_pass_code created_at updated_at contact_normalized token_hash',
     ),
   },
   videos: {
     sheet: 'Videos',
     cols: T('id rsvp_id youtube_id url title reason category duration_seconds:num duration_verified:bool status admin_note created_at'),
   },
-  songs: { sheet: 'Songs', cols: T('id rsvp_id title artist created_at') },
   votes: { sheet: 'Votes', cols: T('id voter_code rsvp_id award video_id created_at') },
 };
 const SETTINGS_SHEET = 'Settings';
@@ -188,7 +187,6 @@ function makeStore(): Store {
   return {
     rsvps: new SheetTable(TABLES.rsvps),
     videos: new SheetTable(TABLES.videos),
-    songs: new SheetTable(TABLES.songs),
     votes: new SheetTable(TABLES.votes),
     getSettings: readSettings,
     saveSettings: writeSettings,

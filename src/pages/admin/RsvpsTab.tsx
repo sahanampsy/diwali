@@ -3,8 +3,11 @@ import { ErrorNote, Spinner } from '../../components/ui';
 import { api, errorMessage } from '../../lib/api';
 import { downloadCsv } from '../../lib/csv';
 import { useAsync } from '../../lib/hooks';
-import { ATTENDING_LABELS, DIET_LABELS, VIBE_LABELS } from '../../lib/labels';
-import type { Attending, Diet, Vibe } from '../../server/types';
+import { ATTENDING_LABELS, DIET_LABELS, LOOKING_FORWARD_LABELS } from '../../lib/labels';
+import type { Attending, Diet, LookingForward } from '../../server/types';
+
+const lookingText = (list: LookingForward[], emoji = false) =>
+  list.map((v) => (emoji ? LOOKING_FORWARD_LABELS[v].emoji + ' ' : '') + LOOKING_FORWARD_LABELS[v].label).join(', ');
 
 export function RsvpsTab({ onError }: { onError: (m: string) => void }) {
   const rsvps = useAsync(() => api.admin.listRsvps(), [], 30000);
@@ -31,17 +34,17 @@ export function RsvpsTab({ onError }: { onError: (m: string) => void }) {
   const exportCsv = () =>
     downloadCsv(
       'diwali-rsvps.csv',
-      ['Name', 'Attending', 'Plus one', 'Plus one name', 'Headcount', 'Contact', 'Diet', 'Diet notes', 'Allergies', 'Vibe', 'Video', 'Song', 'Party pass', 'Plus one pass', 'RSVP’d at', 'Updated at'],
+      ['Name', 'Attending', 'Plus one', 'Plus one name', 'Headcount', 'Contact', 'Diet', 'Diet notes', 'Allergies', 'Looking forward to', 'Video', 'Party pass', 'Plus one pass', 'RSVP’d at', 'Updated at'],
       list.map((r) => [
         r.full_name, r.attending, r.plus_one ? 'yes' : 'no', r.plus_one_name, r.headcount, r.contact,
         r.diet ? DIET_LABELS[r.diet as Diet].label : '', r.diet_other, r.allergies,
-        r.vibe ? VIBE_LABELS[r.vibe as Vibe].label : '', r.video_title, r.song, r.pass_code, r.plus_one_pass_code,
+        lookingText(r.looking_forward), r.video_title, r.pass_code, r.plus_one_pass_code,
         r.created_at, r.updated_at,
       ]),
     );
 
   const remove = async (id: string, name: string) => {
-    if (!confirm(`Delete ${name}’s RSVP? Their video, song and votes are removed too. This can’t be undone.`)) return;
+    if (!confirm(`Delete ${name}’s RSVP? Their video and votes are removed too. This can’t be undone.`)) return;
     try {
       await api.admin.deleteRsvp(id);
       rsvps.reload(true);
@@ -89,9 +92,8 @@ export function RsvpsTab({ onError }: { onError: (m: string) => void }) {
                 <div><dt>Party pass</dt><dd><code>{r.pass_code}</code>{r.plus_one_pass_code && <> · +1: <code>{r.plus_one_pass_code}</code></>}</dd></div>
                 {r.diet === 'other' && <div><dt>Diet notes</dt><dd>{r.diet_other}</dd></div>}
                 {r.allergies && <div><dt>Allergies</dt><dd>{r.allergies}</dd></div>}
-                {r.vibe && <div><dt>Vibe</dt><dd>{VIBE_LABELS[r.vibe as Vibe].emoji} {VIBE_LABELS[r.vibe as Vibe].label}</dd></div>}
+                {r.looking_forward.length > 0 && <div><dt>Looking forward to</dt><dd>{lookingText(r.looking_forward, true)}</dd></div>}
                 {r.video_title && <div><dt>Video</dt><dd>{r.video_title}</dd></div>}
-                {r.song && <div><dt>Song</dt><dd>{r.song}</dd></div>}
                 <div><dt>RSVP’d</dt><dd>{new Date(r.created_at).toLocaleString()}</dd></div>
                 <div className="row-detail-actions">
                   <button className="btn btn-danger btn-sm" onClick={() => remove(r.id, r.full_name)}>Delete RSVP</button>

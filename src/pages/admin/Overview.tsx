@@ -1,23 +1,21 @@
 import { Spinner, ErrorNote } from '../../components/ui';
 import { api, errorMessage } from '../../lib/api';
 import { useAsync } from '../../lib/hooks';
-import { DIET_LABELS, VIBE_LABELS } from '../../lib/labels';
-import { DIETS, VIBES } from '../../server/types';
+import { DIET_LABELS, LOOKING_FORWARD_LABELS } from '../../lib/labels';
+import { DIETS, LOOKING_FORWARD } from '../../server/types';
 
-type Go = (t: 'rsvps' | 'videos' | 'songs' | 'party') => void;
+type Go = (t: 'rsvps' | 'videos' | 'party') => void;
 
 export function Overview({ onGo }: { onGo: Go }) {
   const data = useAsync(async () => {
-    const [rsvps, videos, songs] = await Promise.all([
-      api.admin.listRsvps(), api.admin.listVideos(), api.admin.listSongs(),
-    ]);
-    return { rsvps, videos, songs };
+    const [rsvps, videos] = await Promise.all([api.admin.listRsvps(), api.admin.listVideos()]);
+    return { rsvps, videos };
   }, [], 30000);
 
   if (data.loading && !data.data) return <Spinner />;
   if (!data.data) return <ErrorNote onRetry={() => data.reload()}>{errorMessage(data.error)}</ErrorNote>;
 
-  const { rsvps, videos, songs } = data.data;
+  const { rsvps, videos } = data.data;
   const yes = rsvps.filter((r) => r.attending === 'yes');
   const maybe = rsvps.filter((r) => r.attending === 'maybe');
   const no = rsvps.filter((r) => r.attending === 'no');
@@ -27,9 +25,9 @@ export function Overview({ onGo }: { onGo: Go }) {
 
   const dietCounts = DIETS.map((d) => ({ d, n: coming.filter((r) => r.diet === d).length }));
   const unknownDiet = coming.filter((r) => !r.diet).length;
-  const vibeCounts = VIBES.map((v) => ({ v, n: coming.filter((r) => r.vibe === v).length }));
+  const lookCounts = LOOKING_FORWARD.map((v) => ({ v, n: coming.filter((r) => r.looking_forward.includes(v)).length }));
   const maxDiet = Math.max(1, ...dietCounts.map((x) => x.n), unknownDiet);
-  const maxVibe = Math.max(1, ...vibeCounts.map((x) => x.n));
+  const maxLook = Math.max(1, ...lookCounts.map((x) => x.n));
 
   return (
     <div className="overview">
@@ -54,10 +52,6 @@ export function Overview({ onGo }: { onGo: Go }) {
           <span className="stat-sub">
             {videos.filter((v) => v.status === 'pending').length} to review · {videos.filter((v) => v.status === 'approved').length} approved
           </span>
-        </button>
-        <button className="stat" onClick={() => onGo('songs')}>
-          <span className="stat-num">{songs.length}</span>
-          <span className="stat-label">Song requests</span>
         </button>
       </div>
 
@@ -94,12 +88,12 @@ export function Overview({ onGo }: { onGo: Go }) {
         </div>
 
         <div className="card">
-          <h3>Vibe check</h3>
+          <h3>Looking forward to <span className="muted small">(pick any)</span></h3>
           <ul className="hbars">
-            {vibeCounts.map(({ v, n }) => (
+            {lookCounts.map(({ v, n }) => (
               <li key={v}>
-                <span>{VIBE_LABELS[v].emoji} {VIBE_LABELS[v].label}</span>
-                <span className="bar"><span style={{ width: `${(n / maxVibe) * 100}%` }} /></span>
+                <span>{LOOKING_FORWARD_LABELS[v].emoji} {LOOKING_FORWARD_LABELS[v].label}</span>
+                <span className="bar"><span style={{ width: `${(n / maxLook) * 100}%` }} /></span>
                 <strong>{n}</strong>
               </li>
             ))}

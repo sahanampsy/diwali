@@ -12,7 +12,7 @@ const FIELDS: { key: TextKey; label: string; type?: 'datetime' | 'textarea' | 'u
   { key: 'host_names', label: 'Hosted by', hint: 'Shown as “… invite you to”' },
   { key: 'headline', label: 'Hero headline', hint: 'Text after the first “. ” gets the shimmering gold treatment.' },
   { key: 'subtitle', label: 'Subtitle', type: 'textarea' },
-  { key: 'starts_at', label: 'Starts', type: 'datetime', hint: 'Drives the countdown. In your local time zone.' },
+  { key: 'starts_at', label: 'Starts', type: 'datetime', hint: 'India time (IST). Drives the countdown.' },
   { key: 'ends_at', label: 'Ends (optional)', type: 'datetime' },
   { key: 'venue_name', label: 'Venue name' },
   { key: 'venue_address', label: 'Venue address' },
