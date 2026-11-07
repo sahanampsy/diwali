@@ -584,8 +584,28 @@ var DiwaliApi = (function(exports) {
 		"adminUpdateSettings",
 		"adminResetVotes"
 	]);
+	/**
+	* The Sheet this script is attached to (Extensions → Apps Script), or, for a
+	* standalone script, the one named by the SPREADSHEET_ID script property.
+	*/
 	function spreadsheet() {
-		return SpreadsheetApp.getActiveSpreadsheet();
+		const active = SpreadsheetApp.getActiveSpreadsheet();
+		if (active) return active;
+		const id = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID");
+		if (!id) throw new ApiError("NO_SPREADSHEET");
+		try {
+			return SpreadsheetApp.openById(id.trim());
+		} catch (err) {
+			throw new ApiError("BAD_SPREADSHEET_ID");
+		}
+	}
+	/** Creates any missing tabs, so forgetting to run setup() can't break the site. */
+	function ensureSetup() {
+		const cache = CacheService.getScriptCache();
+		if (cache.get("setup-ok")) return;
+		const names = new Set(spreadsheet().getSheets().map((sh) => sh.getName()));
+		if ([SETTINGS_SHEET, ...Object.values(TABLES).map((t) => t.sheet)].some((n) => !names.has(n))) setup();
+		cache.put("setup-ok", "1", 600);
 	}
 	/** Stop text such as "=IMPORTXML(...)" or "+44..." from being read as a formula. */
 	function toCell(v) {
@@ -783,6 +803,7 @@ var DiwaliApi = (function(exports) {
 				lock = LockService.getScriptLock();
 				lock.waitLock(25e3);
 			}
+			ensureSetup();
 			return respond({
 				ok: true,
 				data: handle(makeStore(), env, action, req.args || {})
@@ -792,20 +813,43 @@ var DiwaliApi = (function(exports) {
 				ok: false,
 				error: err.code
 			});
-			Logger.log(err && err.stack ? err.stack : String(err));
+			const detail = err && err.message ? err.message : String(err);
+			Logger.log(err && err.stack ? err.stack : detail);
 			return respond({
 				ok: false,
-				error: "SERVER_ERROR"
+				error: "SERVER_ERROR",
+				detail
 			});
 		} finally {
 			if (lock) lock.releaseLock();
 		}
 	}
+	/** Open the /exec URL in a browser to check the setup. */
 	function doGet() {
-		return respond({
-			ok: true,
-			data: "Diwali RSVP API is running. Settings sheet: Settings"
-		});
+		try {
+			ensureSetup();
+			const ss = spreadsheet();
+			return respond({
+				ok: true,
+				data: {
+					message: "Diwali RSVP API is running.",
+					spreadsheet: ss.getName(),
+					tabs: ss.getSheets().map((sh) => sh.getName()),
+					admin_password_set: !!prop("ADMIN_PASSWORD"),
+					youtube_service: typeof YouTube !== "undefined"
+				}
+			});
+		} catch (err) {
+			if (err instanceof ApiError) return respond({
+				ok: false,
+				error: err.code
+			});
+			return respond({
+				ok: false,
+				error: "SERVER_ERROR",
+				detail: String(err && err.message ? err.message : err)
+			});
+		}
 	}
 	/** Run once from the Apps Script editor: creates the tabs and default settings. */
 	function setup() {

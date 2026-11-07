@@ -37,6 +37,8 @@ const MESSAGES: Record<string, string> = {
   LOOKUP_UNAVAILABLE: 'Couldn’t check this video’s length automatically. Enable the YouTube advanced service in Apps Script, or check it by hand.',
   NETWORK: 'We couldn’t reach the server. Check your connection and try again.',
   SERVER_ERROR: 'The server hit a snag. Try again in a moment.',
+  NO_SPREADSHEET: 'Setup issue: the Google Script isn’t attached to a Sheet. Open it from the Sheet (Extensions → Apps Script), or add a SPREADSHEET_ID script property.',
+  BAD_SPREADSHEET_ID: 'Setup issue: the SPREADSHEET_ID script property doesn’t match a Sheet the script owner can open.',
 };
 
 export function errorMessage(err: unknown): string {
@@ -74,6 +76,7 @@ async function call<T>(action: string, args: Record<string, unknown> = {}): Prom
     throw new ApiError('NETWORK');
   }
   if (!json.ok) {
+    if (json.detail) console.error(`[${action}] server error:`, json.detail);
     if (json.error === 'NOT_ADMIN') storage.setSession(ADMIN_KEY, null);
     throw new ApiError(json.error ?? 'SERVER_ERROR');
   }
