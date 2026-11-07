@@ -157,7 +157,6 @@ export default function Rsvp() {
 
   const skip = () => {
     if (step === 1) setForm((f) => ({ ...f, diet: '', diet_other: '', allergies: '' }));
-    if (step === 2) setForm((f) => ({ ...f, video_url: '', video_title: '', video_reason: '', video_category: '' }));
     if (step === 3) set('vibe', '');
     if (step === 4) setForm((f) => ({ ...f, song_title: '', song_artist: '' }));
     if (step === STEPS.length - 1) submit({ song_title: '', song_artist: '' });
@@ -383,7 +382,7 @@ export default function Rsvp() {
               </p>
               <p className="rule-badge">⏱ Videos must be under 15 minutes</p>
 
-              <Field label="YouTube link" error={errors.video_url} htmlFor="video_url">
+              <Field label="YouTube link" hint="No video? Leave this blank and tap Next." error={errors.video_url} htmlFor="video_url">
                 <input id="video_url" className="input" inputMode="url" placeholder="https://youtu.be/…"
                   value={form.video_url} onChange={(e) => set('video_url', e.target.value)} maxLength={300} />
               </Field>
@@ -475,9 +474,9 @@ export default function Rsvp() {
             </button>
           )}
           <div className="step-actions-right">
-            {step > 0 && (
+            {step > 0 && step !== 2 && (
               <button type="button" className="btn btn-link" onClick={skip} disabled={submitting}>
-                {step === 2 ? 'Skip, I’ve got nothing' : 'Skip'}
+                Skip
               </button>
             )}
             {declining && step === 0 ? (
