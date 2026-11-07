@@ -126,7 +126,6 @@ var DiwaliApi = (function(exports) {
 		}
 	}
 	var headcount = (r) => r.attending === "no" ? 0 : 1 + (r.plus_one ? 1 : 0);
-	var confessionKey = (env, token) => env.sha256("confession:" + token);
 	function validToken(token) {
 		return typeof token === "string" && token.length >= 32 && token.length <= 128;
 	}
@@ -267,22 +266,6 @@ var DiwaliApi = (function(exports) {
 				...song
 			});
 		}
-		if (typeof p.confession === "string") {
-			const key = confessionKey(env, t);
-			const body = going ? str(p.confession, 1e3) : "";
-			const old = store.confessions.all().find((c) => c.owner_hash === key);
-			if (!body) {
-				if (old) store.confessions.remove(old.id);
-			} else if (old) store.confessions.update(old.id, { body });
-			else store.confessions.insert({
-				id: env.uuid(),
-				owner_hash: key,
-				body,
-				is_favourite: false,
-				is_revealed: false,
-				revealed_at: ""
-			});
-		}
 		return {
 			pass_code: row.pass_code,
 			plus_one_pass_code: row.plus_one_pass_code,
@@ -306,7 +289,6 @@ var DiwaliApi = (function(exports) {
 		if (!r) return null;
 		const v = store.videos.all().find((x) => x.rsvp_id === r.id);
 		const s = store.songs.all().find((x) => x.rsvp_id === r.id);
-		const c = store.confessions.all().find((x) => x.owner_hash === confessionKey(env, token));
 		return {
 			full_name: r.full_name,
 			attending: r.attending,
@@ -329,7 +311,6 @@ var DiwaliApi = (function(exports) {
 				title: s.title,
 				artist: s.artist
 			} : null,
-			confession: c ? c.body : "",
 			pass_code: r.pass_code,
 			plus_one_pass_code: r.plus_one_pass_code,
 			headcount: headcount(r)
@@ -349,13 +330,6 @@ var DiwaliApi = (function(exports) {
 			reason,
 			category,
 			duration_seconds
-		}));
-	}
-	function getRevealedConfessions(store) {
-		return store.confessions.all().filter((c) => c.is_revealed).sort((a, b) => b.revealed_at.localeCompare(a.revealed_at)).map(({ id, body, revealed_at }) => ({
-			id,
-			body,
-			revealed_at
 		}));
 	}
 	function checkPass(store, env, code) {
@@ -455,15 +429,6 @@ var DiwaliApi = (function(exports) {
 			};
 		});
 	}
-	/** Shuffled on every read, so the order never hints at who wrote what. */
-	function adminConfessions(store, env) {
-		const list = store.confessions.all().map(({ owner_hash: _o, ...c }) => c);
-		for (let i = list.length - 1; i > 0; i--) {
-			const j = env.randomInt(i + 1);
-			[list[i], list[j]] = [list[j], list[i]];
-		}
-		return list;
-	}
 	function adminSongs(store) {
 		const names = new Map(store.rsvps.all().map((r) => [r.id, r.full_name]));
 		return store.songs.all().map((s) => {
@@ -507,7 +472,6 @@ var DiwaliApi = (function(exports) {
 		"getMyRsvp",
 		"videoMeta",
 		"getPartyVideos",
-		"getRevealedConfessions",
 		"checkPass",
 		"castVote",
 		"getResults",
@@ -528,7 +492,6 @@ var DiwaliApi = (function(exports) {
 				return env.videoMeta(id);
 			}
 			case "getPartyVideos": return getPartyVideos(store);
-			case "getRevealedConfessions": return getRevealedConfessions(store);
 			case "checkPass": return checkPass(store, env, args.code);
 			case "castVote": return castVote(store, env, args.code, args.award, args.videoId);
 			case "getResults": return getResults(store, admin);
@@ -576,26 +539,10 @@ var DiwaliApi = (function(exports) {
 			case "adminDeleteVideo":
 				removeVideo(store, str(args.id, 64));
 				return true;
-			case "adminListConfessions": return adminConfessions(store, env);
-			case "adminUpdateConfession": {
-				var _args$patch2;
-				const patch = (_args$patch2 = args.patch) !== null && _args$patch2 !== void 0 ? _args$patch2 : {};
-				const clean = {};
-				if ("is_favourite" in patch) clean.is_favourite = patch.is_favourite === true;
-				if ("is_revealed" in patch) {
-					clean.is_revealed = patch.is_revealed === true;
-					clean.revealed_at = clean.is_revealed ? env.now() : "";
-				}
-				store.confessions.update(str(args.id, 64), clean);
-				return true;
-			}
-			case "adminDeleteConfession":
-				store.confessions.remove(str(args.id, 64));
-				return true;
 			case "adminListSongs": return adminSongs(store);
 			case "adminUpdateSettings":
-				var _args$patch3;
-				store.saveSettings(cleanSettings((_args$patch3 = args.patch) !== null && _args$patch3 !== void 0 ? _args$patch3 : {}));
+				var _args$patch2;
+				store.saveSettings(cleanSettings((_args$patch2 = args.patch) !== null && _args$patch2 !== void 0 ? _args$patch2 : {}));
 				return store.getSettings();
 			case "adminResetVotes":
 				for (const v of store.votes.all()) store.votes.remove(v.id);
@@ -621,10 +568,6 @@ var DiwaliApi = (function(exports) {
 			sheet: "Songs",
 			cols: T("id rsvp_id title artist created_at")
 		},
-		confessions: {
-			sheet: "Confessions",
-			cols: T("id body is_favourite:bool is_revealed:bool revealed_at owner_hash")
-		},
 		votes: {
 			sheet: "Votes",
 			cols: T("id voter_code rsvp_id award video_id created_at")
@@ -638,8 +581,6 @@ var DiwaliApi = (function(exports) {
 		"adminUpdateVideo",
 		"adminRecheckVideo",
 		"adminDeleteVideo",
-		"adminUpdateConfession",
-		"adminDeleteConfession",
 		"adminUpdateSettings",
 		"adminResetVotes"
 	]);
@@ -659,12 +600,10 @@ var DiwaliApi = (function(exports) {
 		return v === null || v === void 0 ? "" : String(v);
 	}
 	var SheetTable = class {
-		constructor(def, randomInsert = false) {
+		constructor(def) {
 			_defineProperty(this, "def", void 0);
-			_defineProperty(this, "randomInsert", void 0);
 			_defineProperty(this, "rows", null);
 			this.def = def;
-			this.randomInsert = randomInsert;
 		}
 		sheet() {
 			return spreadsheet().getSheetByName(this.def.sheet);
@@ -694,13 +633,7 @@ var DiwaliApi = (function(exports) {
 		}
 		insert(row) {
 			const sh = this.sheet();
-			const last = Math.max(sh.getLastRow(), 1);
-			let at = last + 1;
-			if (this.randomInsert && last > 1) {
-				const after = 1 + Math.floor(Math.random() * last);
-				sh.insertRowAfter(after);
-				at = after + 1;
-			}
+			const at = Math.max(sh.getLastRow(), 1) + 1;
 			sh.getRange(at, 1, 1, this.def.cols.length).setValues([this.toRow(row)]);
 			this.rows = null;
 		}
@@ -754,7 +687,6 @@ var DiwaliApi = (function(exports) {
 			rsvps: new SheetTable(TABLES.rsvps),
 			videos: new SheetTable(TABLES.videos),
 			songs: new SheetTable(TABLES.songs),
-			confessions: new SheetTable(TABLES.confessions, true),
 			votes: new SheetTable(TABLES.votes),
 			getSettings: readSettings,
 			saveSettings: writeSettings

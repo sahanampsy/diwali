@@ -17,7 +17,6 @@ function splitHeadline(h: string): [string, string] {
 const FEATURES = [
   { emoji: '📺', title: 'The YouTube Watch Party', text: 'Bring the best video the internet ever gave you. We watch them all, then vote for the winners.' },
   { emoji: '🍛', title: 'A ridiculous feast', text: 'Tell us how you eat and we’ll make sure there’s far too much of it.' },
-  { emoji: '🤫', title: 'Anonymous confessions', text: 'Something nobody here knows about you. Some may be revealed. Nobody will know it was you.' },
   { emoji: '💃', title: 'Your dance floor anthem', text: 'One song that gets you up. It goes straight on the playlist.' },
 ];
 

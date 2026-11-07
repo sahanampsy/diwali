@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Diya } from '../components/Diya';
 import { Fireworks } from '../components/Fireworks';
@@ -12,7 +12,7 @@ import { AWARD_LABELS, CATEGORY_LABELS } from '../lib/labels';
 import { formatDuration, thumbnail, watchUrl } from '../lib/youtube';
 import { AWARDS, VIDEO_CATEGORIES, type PartyVideo, type ResultRow, type VideoCategory } from '../server/types';
 
-type View = 'gallery' | 'confessions' | 'leaderboard';
+type View = 'gallery' | 'leaderboard';
 
 /** The big-screen experience for the night. Hosts open this on the TV. */
 export default function Party() {
@@ -38,9 +38,9 @@ export default function Party() {
           <Diya size={34} /> <span>{s.event_name}</span>
         </Link>
         <nav className="party-tabs" aria-label="Watch party views">
-          {(['gallery', 'confessions', 'leaderboard'] as View[]).map((v) => (
+          {(['gallery', 'leaderboard'] as View[]).map((v) => (
             <button key={v} className={`party-tab ${view === v ? 'is-active' : ''}`} onClick={() => setView(v)}>
-              {v === 'gallery' ? '📺 Watch Party' : v === 'confessions' ? '🤫 Confessions' : '🏆 Leaderboard'}
+              {v === 'gallery' ? '📺 Watch Party' : '🏆 Leaderboard'}
             </button>
           ))}
         </nav>
@@ -58,7 +58,6 @@ export default function Party() {
       )}
 
       {view === 'gallery' && <Gallery />}
-      {view === 'confessions' && <Confessions />}
       {view === 'leaderboard' && <Leaderboard revealed={s.results_revealed} votingOpen={s.voting_open} />}
     </main>
   );
@@ -139,55 +138,12 @@ function Gallery() {
   );
 }
 
-function Confessions() {
-  const list = useAsync(() => api.getRevealedConfessions(), [], 5000);
-  const [index, setIndex] = useState(0);
-  const items = list.data ?? [];
-
-  // Jump to the newest confession whenever the hosts reveal one.
-  const newestId = items[0]?.id;
-  useEffect(() => {
-    setIndex(0);
-  }, [newestId]);
-
-  if (list.loading && !list.data) return <Spinner label="Unsealing the envelopes" />;
-  if (!list.data) return <ErrorNote onRetry={() => list.reload()}>{errorMessage(list.error)}</ErrorNote>;
-
-  if (items.length === 0) {
-    return (
-      <section className="confession-stage">
-        <Mandala className="stage-mandala" />
-        <p className="kicker">Anonymous confessions</p>
-        <h1 className="display-sm">The envelopes are still sealed… 🤫</h1>
-        <p className="muted">The hosts will reveal confessions one by one. Nobody knows who wrote what.</p>
-      </section>
-    );
-  }
-
-  const c = items[Math.min(index, items.length - 1)];
-  return (
-    <section className="confession-stage">
-      <Mandala className="stage-mandala" />
-      <p className="kicker">Confession #{items.length - index} · Anonymous</p>
-      <blockquote key={c.id} className="confession-big">“{c.body}”</blockquote>
-      <p className="muted">Who could it be? 👀</p>
-      {items.length > 1 && (
-        <div className="player-nav">
-          <button className="btn btn-ghost btn-sm" disabled={index >= items.length - 1} onClick={() => setIndex(index + 1)}>← Older</button>
-          <span className="muted small">{items.length} revealed</span>
-          <button className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => setIndex(index - 1)}>Newer →</button>
-        </div>
-      )}
-    </section>
-  );
-}
-
 function Leaderboard({ revealed, votingOpen }: { revealed: boolean; votingOpen: boolean }) {
   const results = useAsync<ResultRow[] | null>(() => (revealed ? api.getResults() : Promise.resolve(null)), [revealed], revealed ? 8000 : 0);
 
   if (!revealed) {
     return (
-      <section className="confession-stage">
+      <section className="stage">
         <Mandala className="stage-mandala" />
         <Diya size={72} lit={false} />
         <h1 className="display-sm">{votingOpen ? 'Votes are pouring in…' : 'The results are locked 🔒'}</h1>

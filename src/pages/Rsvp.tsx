@@ -29,14 +29,13 @@ interface FormState {
   video_reason: string;
   video_category: VideoCategory | '';
   vibe: Vibe | '';
-  confession: string;
   song_title: string;
   song_artist: string;
 }
 
 const EMPTY: FormState = {
   full_name: '', attending: '', plus_one: null, plus_one_name: '', contact: '', diet: '', diet_other: '', allergies: '',
-  video_url: '', video_title: '', video_reason: '', video_category: '', vibe: '', confession: '', song_title: '', song_artist: '',
+  video_url: '', video_title: '', video_reason: '', video_category: '', vibe: '', song_title: '', song_artist: '',
 };
 
 const STEPS = [
@@ -44,7 +43,6 @@ const STEPS = [
   { key: 'food', title: 'The Feast', emoji: '🍛' },
   { key: 'video', title: 'The Watch Party', emoji: '📺' },
   { key: 'vibe', title: 'Vibe Check', emoji: '✨' },
-  { key: 'confess', title: 'Confessions', emoji: '🤫' },
   { key: 'song', title: 'The Dance Floor', emoji: '💃' },
 ] as const;
 
@@ -89,7 +87,7 @@ export default function Rsvp() {
           contact: r.contact, diet: r.diet, diet_other: r.diet_other, allergies: r.allergies,
           video_url: r.video ? 'https://youtu.be/' + r.video.youtube_id : '', video_title: r.video?.title ?? '',
           video_reason: r.video?.reason ?? '', video_category: r.video?.category ?? '', vibe: r.vibe,
-          confession: r.confession, song_title: r.song?.title ?? '', song_artist: r.song?.artist ?? '',
+          song_title: r.song?.title ?? '', song_artist: r.song?.artist ?? '',
         });
       })
       .catch(() => undefined)
@@ -161,8 +159,7 @@ export default function Rsvp() {
     if (step === 1) setForm((f) => ({ ...f, diet: '', diet_other: '', allergies: '' }));
     if (step === 2) setForm((f) => ({ ...f, video_url: '', video_title: '', video_reason: '', video_category: '' }));
     if (step === 3) set('vibe', '');
-    if (step === 4) set('confession', '');
-    if (step === 5) setForm((f) => ({ ...f, song_title: '', song_artist: '' }));
+    if (step === 4) setForm((f) => ({ ...f, song_title: '', song_artist: '' }));
     if (step === STEPS.length - 1) submit({ song_title: '', song_artist: '' });
     else go(step + 1);
   };
@@ -196,7 +193,6 @@ export default function Rsvp() {
             }
           : null,
       song: f.song_title.trim() && !declining ? { title: f.song_title.trim(), artist: f.song_artist.trim() } : null,
-      confession: declining ? '' : f.confession.trim(),
     };
     setSubmitting(true);
     setErrors({});
@@ -455,25 +451,6 @@ export default function Rsvp() {
           )}
 
           {step === 4 && (
-            <>
-              <p className="kicker">Anonymous confessions</p>
-              <h1 className="step-title">Tell us something about yourself that nobody in this group knows.</h1>
-              <div className="secret-note">
-                <span>🔒</span>
-                <p>
-                  Totally anonymous. Your confession is stored separately from your RSVP, with no name attached, not even for the hosts.
-                  Some may be read out at the party. Nobody will know it was you.
-                </p>
-              </div>
-              <Field label="Your confession" hint="Optional. Keep it fun." htmlFor="confession">
-                <textarea id="confession" className="input input-secret" rows={4} placeholder="I once…"
-                  value={form.confession} onChange={(e) => set('confession', e.target.value)} maxLength={1000} />
-              </Field>
-              <p className="char-count">{form.confession.length}/1000</p>
-            </>
-          )}
-
-          {step === 5 && (
             <>
               <p className="kicker">Song request</p>
               <h1 className="step-title">What’s ONE song that will get you on the dance floor?</h1>

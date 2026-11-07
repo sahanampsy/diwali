@@ -31,7 +31,7 @@ const T = (cols: string): [string, Kind][] =>
     return [name, (kind as Kind) || 'text'];
   });
 
-const TABLES: Record<'rsvps' | 'videos' | 'songs' | 'confessions' | 'votes', TableDef> = {
+const TABLES: Record<'rsvps' | 'videos' | 'songs' | 'votes', TableDef> = {
   rsvps: {
     sheet: 'RSVPs',
     cols: T(
@@ -43,14 +43,13 @@ const TABLES: Record<'rsvps' | 'videos' | 'songs' | 'confessions' | 'votes', Tab
     cols: T('id rsvp_id youtube_id url title reason category duration_seconds:num duration_verified:bool status admin_note created_at'),
   },
   songs: { sheet: 'Songs', cols: T('id rsvp_id title artist created_at') },
-  confessions: { sheet: 'Confessions', cols: T('id body is_favourite:bool is_revealed:bool revealed_at owner_hash') },
   votes: { sheet: 'Votes', cols: T('id voter_code rsvp_id award video_id created_at') },
 };
 const SETTINGS_SHEET = 'Settings';
 
 const WRITE_ACTIONS = new Set([
   'submitRsvp', 'castVote', 'adminDeleteRsvp', 'adminUpdateVideo', 'adminRecheckVideo', 'adminDeleteVideo',
-  'adminUpdateConfession', 'adminDeleteConfession', 'adminUpdateSettings', 'adminResetVotes',
+  'adminUpdateSettings', 'adminResetVotes',
 ]);
 
 // ---------------------------------------------------------------- sheet storage
@@ -75,7 +74,7 @@ function fromCell(v: unknown, kind: Kind): unknown {
 
 class SheetTable<R extends { id: string }> implements Table<R> {
   private rows: R[] | null = null;
-  constructor(private def: TableDef, private randomInsert = false) {}
+  constructor(private def: TableDef) {}
 
   private sheet() {
     return spreadsheet().getSheetByName(this.def.sheet);
@@ -112,14 +111,7 @@ class SheetTable<R extends { id: string }> implements Table<R> {
 
   insert(row: R) {
     const sh = this.sheet();
-    const last = Math.max(sh.getLastRow(), 1);
-    let at = last + 1;
-    if (this.randomInsert && last > 1) {
-      // Confessions land at a random position so row order reveals nothing.
-      const after = 1 + Math.floor(Math.random() * last);
-      sh.insertRowAfter(after);
-      at = after + 1;
-    }
+    const at = Math.max(sh.getLastRow(), 1) + 1;
     sh.getRange(at, 1, 1, this.def.cols.length).setValues([this.toRow(row)]);
     this.rows = null;
   }
@@ -175,7 +167,6 @@ function makeStore(): Store {
     rsvps: new SheetTable(TABLES.rsvps),
     videos: new SheetTable(TABLES.videos),
     songs: new SheetTable(TABLES.songs),
-    confessions: new SheetTable(TABLES.confessions, true),
     votes: new SheetTable(TABLES.votes),
     getSettings: readSettings,
     saveSettings: writeSettings,

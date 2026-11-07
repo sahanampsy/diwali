@@ -5,7 +5,7 @@
 
 import {
   ATTENDING, AWARDS, DIETS, MAX_VIDEO_SECONDS, VIBES, VIDEO_CATEGORIES,
-  type AdminConfession, type AdminRsvp, type AdminSong, type AdminVideo, type Award, type ConfessionRow,
+  type AdminRsvp, type AdminSong, type AdminVideo, type Award,
   type EventSettings, type MyRsvp, type PartyVideo, type PassInfo, type ResultRow, type RsvpPayload,
   type RsvpResult, type RsvpRow, type SongRow, type VideoCategory, type VideoMeta, type VideoRow,
   type VideoStatus, type VoteRow,
@@ -22,7 +22,6 @@ export interface Store {
   rsvps: Table<RsvpRow>;
   videos: Table<VideoRow>;
   songs: Table<SongRow>;
-  confessions: Table<ConfessionRow>;
   votes: Table<VoteRow>;
   getSettings(): EventSettings;
   saveSettings(patch: Partial<EventSettings>): void;
@@ -87,8 +86,6 @@ function newPassCode(store: Store, env: Env): string {
 
 const headcount = (r: Pick<RsvpRow, 'attending' | 'plus_one'>) =>
   r.attending === 'no' ? 0 : 1 + (r.plus_one ? 1 : 0);
-
-const confessionKey = (env: Env, token: string) => env.sha256('confession:' + token);
 
 function validToken(token: unknown): token is string {
   return typeof token === 'string' && token.length >= 32 && token.length <= 128;
@@ -232,20 +229,6 @@ export function submitRsvp(store: Store, env: Env, p: Partial<RsvpPayload>, toke
     else store.songs.insert({ id: env.uuid(), rsvp_id: row.id, created_at: now, ...song });
   }
 
-  // Anonymous confession, keyed only by a one-way hash of the guest's private token.
-  if (typeof p.confession === 'string') {
-    const key = confessionKey(env, t);
-    const body = going ? str(p.confession, 1000) : '';
-    const old = store.confessions.all().find((c) => c.owner_hash === key);
-    if (!body) {
-      if (old) store.confessions.remove(old.id);
-    } else if (old) {
-      store.confessions.update(old.id, { body });
-    } else {
-      store.confessions.insert({ id: env.uuid(), owner_hash: key, body, is_favourite: false, is_revealed: false, revealed_at: '' });
-    }
-  }
-
   return { pass_code: row.pass_code, plus_one_pass_code: row.plus_one_pass_code, attending: row.attending, headcount: headcount(row) };
 }
 
@@ -267,7 +250,6 @@ export function getMyRsvp(store: Store, env: Env, token: unknown): MyRsvp | null
   if (!r) return null;
   const v = store.videos.all().find((x) => x.rsvp_id === r.id);
   const s = store.songs.all().find((x) => x.rsvp_id === r.id);
-  const c = store.confessions.all().find((x) => x.owner_hash === confessionKey(env, token));
   return {
     full_name: r.full_name,
     attending: r.attending,
@@ -283,7 +265,6 @@ export function getMyRsvp(store: Store, env: Env, token: unknown): MyRsvp | null
       : null,
     video_status: v ? v.status : null,
     song: s ? { title: s.title, artist: s.artist } : null,
-    confession: c ? c.body : '',
     pass_code: r.pass_code,
     plus_one_pass_code: r.plus_one_pass_code,
     headcount: headcount(r),
@@ -305,14 +286,6 @@ export function getPartyVideos(store: Store): PartyVideo[] {
     .map(({ id, youtube_id, title, reason, category, duration_seconds }) => ({
       id, youtube_id, title, reason, category, duration_seconds,
     }));
-}
-
-export function getRevealedConfessions(store: Store) {
-  return store.confessions
-    .all()
-    .filter((c) => c.is_revealed)
-    .sort((a, b) => b.revealed_at.localeCompare(a.revealed_at))
-    .map(({ id, body, revealed_at }) => ({ id, body, revealed_at }));
 }
 
 export function checkPass(store: Store, env: Env, code: unknown): PassInfo {
@@ -412,16 +385,6 @@ function adminVideos(store: Store): AdminVideo[] {
     .map((v) => ({ ...v, submitter: names.get(v.rsvp_id) ?? '', votes: votes.filter((x) => x.video_id === v.id).length }));
 }
 
-/** Shuffled on every read, so the order never hints at who wrote what. */
-function adminConfessions(store: Store, env: Env): AdminConfession[] {
-  const list = store.confessions.all().map(({ owner_hash: _o, ...c }) => c);
-  for (let i = list.length - 1; i > 0; i--) {
-    const j = env.randomInt(i + 1);
-    [list[i], list[j]] = [list[j], list[i]];
-  }
-  return list;
-}
-
 function adminSongs(store: Store): AdminSong[] {
   const names = new Map(store.rsvps.all().map((r) => [r.id, r.full_name]));
   return store.songs.all().map((s) => ({ ...s, requested_by: names.get(s.rsvp_id) ?? '' }));
@@ -447,7 +410,7 @@ function cleanSettings(patch: Record<string, unknown>): Partial<EventSettings> {
 
 const PUBLIC_ACTIONS = [
   'getSettings', 'getPublicStats', 'submitRsvp', 'getMyRsvp', 'videoMeta', 'getPartyVideos',
-  'getRevealedConfessions', 'checkPass', 'castVote', 'getResults', 'adminLogin',
+  'checkPass', 'castVote', 'getResults', 'adminLogin',
 ] as const;
 
 /** Single entry point for every request. `args` is untrusted JSON from the browser. */
@@ -471,8 +434,6 @@ export function handle(store: Store, env: Env, action: string, args: Record<stri
     }
     case 'getPartyVideos':
       return getPartyVideos(store);
-    case 'getRevealedConfessions':
-      return getRevealedConfessions(store);
     case 'checkPass':
       return checkPass(store, env, args.code);
     case 'castVote':
@@ -517,22 +478,6 @@ export function handle(store: Store, env: Env, action: string, args: Record<stri
     }
     case 'adminDeleteVideo':
       removeVideo(store, str(args.id, 64));
-      return true;
-    case 'adminListConfessions':
-      return adminConfessions(store, env);
-    case 'adminUpdateConfession': {
-      const patch = (args.patch ?? {}) as Partial<ConfessionRow>;
-      const clean: Partial<ConfessionRow> = {};
-      if ('is_favourite' in patch) clean.is_favourite = patch.is_favourite === true;
-      if ('is_revealed' in patch) {
-        clean.is_revealed = patch.is_revealed === true;
-        clean.revealed_at = clean.is_revealed ? env.now() : '';
-      }
-      store.confessions.update(str(args.id, 64), clean);
-      return true;
-    }
-    case 'adminDeleteConfession':
-      store.confessions.remove(str(args.id, 64));
       return true;
     case 'adminListSongs':
       return adminSongs(store);

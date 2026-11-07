@@ -93,10 +93,9 @@ export function PartyControl({ onError }: { onError: (m: string) => void }) {
 
         <div className="card control-card">
           <h3>Party screen</h3>
-          <p className="muted small">Open on the TV. It updates by itself when you open voting, reveal confessions or reveal results.</p>
+          <p className="muted small">Open on the TV. It updates by itself when you open voting or reveal results.</p>
           <div className="control-buttons">
             <Link className="btn btn-ghost btn-sm" to="/party?view=gallery" target="_blank">📺 Gallery</Link>
-            <Link className="btn btn-ghost btn-sm" to="/party?view=confessions" target="_blank">🤫 Confessions</Link>
             <Link className="btn btn-ghost btn-sm" to="/party?view=leaderboard" target="_blank">🏆 Leaderboard</Link>
           </div>
         </div>

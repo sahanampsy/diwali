@@ -4,10 +4,10 @@
 
 import { handle, type Env, type Store, type Table } from '../server/core';
 import {
-  DEFAULT_SETTINGS, type ConfessionRow, type EventSettings, type RsvpRow, type SongRow, type VideoRow, type VoteRow,
+  DEFAULT_SETTINGS, type EventSettings, type RsvpRow, type SongRow, type VideoRow, type VoteRow,
 } from '../server/types';
 
-const KEY = 'diwali.demoDb.v1';
+const KEY = 'diwali.demoDb.v2';
 export const DEMO_PASSWORD = 'diwali';
 
 interface Db {
@@ -15,7 +15,6 @@ interface Db {
   rsvps: RsvpRow[];
   videos: VideoRow[];
   songs: SongRow[];
-  confessions: ConfessionRow[];
   votes: VoteRow[];
 }
 
@@ -67,11 +66,6 @@ function seed(): Db {
       { id: 's2', rsvp_id: 'ns', title: 'London Thumakda', artist: 'Labh Janjua', created_at: at(200) },
       { id: 's3', rsvp_id: 'tom', title: 'Mr. Brightside', artist: 'The Killers', created_at: at(100) },
     ],
-    confessions: [
-      { id: 'c1', owner_hash: 'x1', body: 'I have never once finished a book I recommended to someone.', is_favourite: true, is_revealed: true, revealed_at: at(5) },
-      { id: 'c2', owner_hash: 'x2', body: 'I can recite the whole of K3G from memory. Including the songs.', is_favourite: false, is_revealed: false, revealed_at: '' },
-      { id: 'c3', owner_hash: 'x3', body: 'I was once mistaken for a minor celebrity at an airport and I just went with it.', is_favourite: true, is_revealed: false, revealed_at: '' },
-    ],
     votes: [],
   };
 }
@@ -104,7 +98,7 @@ export function resetDemo() {
   }
 }
 
-function table<K extends 'rsvps' | 'videos' | 'songs' | 'confessions' | 'votes'>(db: Db, key: K): Table<Db[K][number]> {
+function table<K extends 'rsvps' | 'videos' | 'songs' | 'votes'>(db: Db, key: K): Table<Db[K][number]> {
   type R = Db[K][number];
   return {
     all: () => (db[key] as R[]).slice(),
@@ -152,7 +146,6 @@ export async function demoCall(action: string, args: Record<string, unknown>): P
     rsvps: table(db, 'rsvps'),
     videos: table(db, 'videos'),
     songs: table(db, 'songs'),
-    confessions: table(db, 'confessions'),
     votes: table(db, 'votes'),
     getSettings: () => ({ ...db.settings }),
     saveSettings: (patch) => {

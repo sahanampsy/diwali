@@ -3,10 +3,10 @@
 A festive, mobile-first RSVP site for a Diwali house party, with Google Sheets as the database.
 
 - **Invite page**: animated diyas, marigold garland, countdown, and event details you can edit.
-- **6-level RSVP game**: guest list (with plus ones and a live headcount), food, the **YouTube Watch Party** submission, vibe check, an anonymous confession, and a song request. A guest who says "No" can send regrets straight from level 1.
+- **5-level RSVP game**: guest list (with plus ones and a live headcount), food, the **YouTube Watch Party** submission, vibe check, and a song request. A guest who says "No" can send regrets straight from level 1.
 - **Confirmation** with fireworks, a calendar invite, and a **party pass** code for voting.
-- **Host dashboard** (`/admin`, password protected): RSVPs, videos, confessions, songs, Party Control, and event details.
-- **Watch party screen** (`/party`) for the TV: gallery and player, the confessions reveal, and the leaderboard.
+- **Host dashboard** (`/admin`, password protected): RSVPs, videos, songs, Party Control, and event details.
+- **Watch party screen** (`/party`) for the TV: gallery and player, and the leaderboard.
 - **Guest voting** (`/vote`) on phones: one locked vote per award, and no voting for your own video.
 
 ## How it works
@@ -22,9 +22,6 @@ Browser (React + Vite)  ──POST JSON──▶  Google Apps Script web app  �
 - **Video length check**: the script uses YouTube's own API through Apps Script's built-in YouTube service, which needs no API key.
   It checks the length again when the RSVP is submitted, so videos of 15 minutes or more are rejected even if someone bypasses the form.
   If the YouTube service isn't enabled, the script falls back to looking up the title only, and the dashboard flags the video as "Length unknown" for you to check.
-- **Confessions are anonymous by design.** They are stored in their own tab with no name, no RSVP link and no timestamp, inserted at a random row.
-  Each one is keyed by a one-way hash of a secret that only lives in the guest's browser.
-  That secret lets a guest edit their own confession, but nobody, including the hosts, can trace a confession back to a guest.
 - **Duplicate RSVPs**: one RSVP per email or phone number. Guests who come back on the same device edit their RSVP instead of creating a new one.
 - **Host login**: a password stored in the script's Script Properties, never in the code. A successful login returns a signed session token that expires after 12 hours.
   Repeated wrong guesses are rate-limited.
@@ -52,7 +49,7 @@ The host password in demo mode is `diwali`.
      This turns on the YouTube service used for the length checks.
    - In **Project Settings → Script properties**, add `ADMIN_PASSWORD` with the host password of your choice.
 3. **Run setup.** Choose `setup` in the function drop-down and click **Run**, then approve the permissions.
-   This creates the tabs: Settings, RSVPs, Videos, Songs, Confessions and Votes.
+   This creates the tabs: Settings, RSVPs, Videos, Songs and Votes.
 4. **Deploy.** Go to **Deploy → New deployment → Web app**. Set **Execute as: Me** and **Who has access: Anyone**, then click **Deploy**.
    Copy the **Web app URL**, which ends in `/exec`.
 5. **Connect the site.** Copy `.env.example` to `.env.local` and set:
@@ -73,10 +70,9 @@ You can also open the Sheet itself at any time to see the raw data. Avoid editin
 
 1. **Before the party**: in **Videos**, approve or flag each submission. Unverified lengths have a "Check length" button.
 2. **Watch**: open `/party` on the TV. Click a tile to play it; Previous/Next walks through the queue.
-3. **Confessions**: in the dashboard's **Confessions** tab, tap **Reveal** on a confession. It appears on the TV's Confessions view within a few seconds.
-4. **Vote**: in **Party Control**, click **Open voting**. A QR code appears on the TV, and guests enter their 6-character party pass at `/vote`.
+3. **Vote**: in **Party Control**, click **Open voting**. A QR code appears on the TV, and guests enter their 6-character party pass at `/vote`.
    Plus ones get their own pass. You can look up passes in the RSVPs tab.
-5. **Close voting**, then **Reveal results**. The leaderboard and fireworks appear on everyone's screen.
+4. **Close voting**, then **Reveal results**. The leaderboard and fireworks appear on everyone's screen.
    A **Reset all votes** button is there for after a rehearsal.
 
 Awards: Funniest Video, Most Mind-Blowing, Most WTF, Hidden Gem and People's Champion.

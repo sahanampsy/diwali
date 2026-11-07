@@ -1,6 +1,6 @@
 import { ApiError as CoreError } from '../server/core';
 import type {
-  AdminConfession, AdminRsvp, AdminSong, AdminVideo, ApiResponse, Award, ConfessionRow, EventSettings, MyRsvp,
+  AdminRsvp, AdminSong, AdminVideo, ApiResponse, Award, EventSettings, MyRsvp,
   PartyVideo, PassInfo, ResultRow, RsvpPayload, RsvpResult, VideoMeta, VideoRow,
 } from '../server/types';
 import { storage } from './storage';
@@ -107,7 +107,6 @@ export const api = {
   getMyRsvp: (token: string) => call<MyRsvp | null>('getMyRsvp', { token }),
   videoMeta,
   getPartyVideos: () => call<PartyVideo[]>('getPartyVideos'),
-  getRevealedConfessions: () => call<{ id: string; body: string; revealed_at: string }[]>('getRevealedConfessions'),
   checkPass: (code: string) => call<PassInfo>('checkPass', { code }),
   castVote: (code: string, award: Award, videoId: string) => call<true>('castVote', { code, award, videoId }),
   getResults: () => call<ResultRow[]>('getResults'),
@@ -127,10 +126,6 @@ export const api = {
       call<true>('adminUpdateVideo', { id, patch }),
     recheckVideo: (id: string) => call<VideoRow>('adminRecheckVideo', { id }),
     deleteVideo: (id: string) => call<true>('adminDeleteVideo', { id }),
-    listConfessions: () => call<AdminConfession[]>('adminListConfessions'),
-    updateConfession: (id: string, patch: Partial<Pick<ConfessionRow, 'is_favourite' | 'is_revealed'>>) =>
-      call<true>('adminUpdateConfession', { id, patch }),
-    deleteConfession: (id: string) => call<true>('adminDeleteConfession', { id }),
     listSongs: () => call<AdminSong[]>('adminListSongs'),
     updateSettings: (patch: Partial<EventSettings>) => call<EventSettings>('adminUpdateSettings', { patch }),
     resetVotes: () => call<true>('adminResetVotes'),

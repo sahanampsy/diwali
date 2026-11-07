@@ -70,7 +70,6 @@ export interface RsvpPayload {
   vibe: Vibe | '';
   video: VideoInput | null;
   song: { title: string; artist: string } | null;
-  confession: string;
 }
 
 export interface RsvpResult {
@@ -157,16 +156,6 @@ export interface SongRow {
   created_at: string;
 }
 
-/** No rsvp_id and no timestamp: nothing ties a confession to a guest. */
-export interface ConfessionRow {
-  id: string;
-  owner_hash: string;
-  body: string;
-  is_favourite: boolean;
-  is_revealed: boolean;
-  revealed_at: string;
-}
-
 export interface VoteRow {
   id: string;
   voter_code: string;
@@ -188,8 +177,6 @@ export interface AdminVideo extends VideoRow {
   submitter: string;
   votes: number;
 }
-
-export type AdminConfession = Omit<ConfessionRow, 'owner_hash'>;
 
 export interface AdminSong extends SongRow {
   requested_by: string;

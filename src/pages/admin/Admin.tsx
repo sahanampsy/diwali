@@ -3,7 +3,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Diya } from '../../components/Diya';
 import { ErrorNote, Field } from '../../components/ui';
 import { api, errorMessage, MODE } from '../../lib/api';
-import { ConfessionsTab } from './ConfessionsTab';
 import { Overview } from './Overview';
 import { PartyControl } from './PartyControl';
 import { RsvpsTab } from './RsvpsTab';
@@ -15,7 +14,6 @@ const TABS = [
   { key: 'overview', label: 'Overview', emoji: '📊' },
   { key: 'rsvps', label: 'RSVPs', emoji: '📜' },
   { key: 'videos', label: 'Videos', emoji: '📺' },
-  { key: 'confessions', label: 'Confessions', emoji: '🤫' },
   { key: 'songs', label: 'Songs', emoji: '💃' },
   { key: 'party', label: 'Party Control', emoji: '🏆' },
   { key: 'settings', label: 'Event Details', emoji: '⚙️' },
@@ -69,7 +67,7 @@ function Login({ onDone }: { onDone: () => void }) {
       <form className="card login-card" onSubmit={submit}>
         <Diya size={64} />
         <h1 className="display-sm">Hosts only</h1>
-        <p className="muted">Sign in to manage RSVPs, videos, confessions and the party.</p>
+        <p className="muted">Sign in to manage RSVPs, videos, songs and the party.</p>
         <Field label="Host password" error={error} htmlFor="pw">
           <input id="pw" type="password" className="input" autoComplete="current-password" value={password}
             onChange={(e) => setPassword(e.target.value)} autoFocus />
@@ -118,7 +116,6 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
         {tab === 'overview' && <Overview onGo={go} />}
         {tab === 'rsvps' && <RsvpsTab onError={setNotice} />}
         {tab === 'videos' && <VideosTab onError={setNotice} />}
-        {tab === 'confessions' && <ConfessionsTab onError={setNotice} />}
         {tab === 'songs' && <SongsTab />}
         {tab === 'party' && <PartyControl onError={setNotice} />}
         {tab === 'settings' && <SettingsTab />}

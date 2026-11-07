@@ -4,20 +4,20 @@ import { useAsync } from '../../lib/hooks';
 import { DIET_LABELS, VIBE_LABELS } from '../../lib/labels';
 import { DIETS, VIBES } from '../../server/types';
 
-type Go = (t: 'rsvps' | 'videos' | 'confessions' | 'songs' | 'party') => void;
+type Go = (t: 'rsvps' | 'videos' | 'songs' | 'party') => void;
 
 export function Overview({ onGo }: { onGo: Go }) {
   const data = useAsync(async () => {
-    const [rsvps, videos, confessions, songs] = await Promise.all([
-      api.admin.listRsvps(), api.admin.listVideos(), api.admin.listConfessions(), api.admin.listSongs(),
+    const [rsvps, videos, songs] = await Promise.all([
+      api.admin.listRsvps(), api.admin.listVideos(), api.admin.listSongs(),
     ]);
-    return { rsvps, videos, confessions, songs };
+    return { rsvps, videos, songs };
   }, [], 30000);
 
   if (data.loading && !data.data) return <Spinner />;
   if (!data.data) return <ErrorNote onRetry={() => data.reload()}>{errorMessage(data.error)}</ErrorNote>;
 
-  const { rsvps, videos, confessions, songs } = data.data;
+  const { rsvps, videos, songs } = data.data;
   const yes = rsvps.filter((r) => r.attending === 'yes');
   const maybe = rsvps.filter((r) => r.attending === 'maybe');
   const no = rsvps.filter((r) => r.attending === 'no');
@@ -54,11 +54,6 @@ export function Overview({ onGo }: { onGo: Go }) {
           <span className="stat-sub">
             {videos.filter((v) => v.status === 'pending').length} to review · {videos.filter((v) => v.status === 'approved').length} approved
           </span>
-        </button>
-        <button className="stat" onClick={() => onGo('confessions')}>
-          <span className="stat-num">{confessions.length}</span>
-          <span className="stat-label">Confessions</span>
-          <span className="stat-sub">{confessions.filter((c) => c.is_revealed).length} revealed</span>
         </button>
         <button className="stat" onClick={() => onGo('songs')}>
           <span className="stat-num">{songs.length}</span>
