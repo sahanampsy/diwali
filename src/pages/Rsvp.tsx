@@ -68,6 +68,7 @@ export default function Rsvp() {
   const [prefilling, setPrefilling] = useState(hasSubmitted());
   const [meta, setMeta] = useState<MetaState>(null);
   const topRef = useRef<HTMLDivElement>(null);
+  const autoTitle = useRef('');
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
@@ -106,14 +107,20 @@ export default function Rsvp() {
     const t = setTimeout(async () => {
       const m = await api.videoMeta(videoId);
       setMeta((cur) => (cur?.id === videoId ? { id: videoId, status: m ? 'done' : 'failed', meta: m } : cur));
-      if (m?.title) setForm((f) => (f.video_title ? f : { ...f, video_title: m.title! }));
+      if (m?.title) {
+        // Fill the title unless the guest has typed their own.
+        const previousAuto = autoTitle.current;
+        autoTitle.current = m.title;
+        setForm((f) => (!f.video_title || f.video_title === previousAuto ? { ...f, video_title: m.title! } : f));
+      }
     }, 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]);
 
   const tooLong = !!meta?.meta?.duration_seconds && meta.meta.duration_seconds >= MAX_VIDEO_SECONDS;
-  const notFound = meta?.status === 'done' && !meta.meta?.title && !meta.meta?.duration_seconds;
+  const notFound = meta?.status === 'done' && meta.meta?.exists === false;
+  const titleLookupFailed = !!videoId && meta?.id === videoId && meta.status !== 'loading' && !meta.meta?.title;
   const headcount = form.attending === 'no' || !form.attending ? 0 : 1 + (form.plus_one ? 1 : 0);
   const declining = form.attending === 'no';
 
@@ -410,8 +417,10 @@ export default function Rsvp() {
 
               {form.video_url.trim() && (
                 <div className="reveal-block">
-                  <Field label="Video title" error={errors.video_title} htmlFor="video_title">
+                  <Field label="Video title" error={errors.video_title} htmlFor="video_title"
+                    hint={titleLookupFailed && !notFound ? 'We couldn’t grab the title automatically. Type it in.' : meta?.meta?.title ? 'Filled in from YouTube. Edit it if you like.' : undefined}>
                     <input id="video_title" className="input" value={form.video_title}
+                      placeholder={meta?.status === 'loading' ? 'Fetching the title from YouTube…' : 'e.g. Charlie bit my finger'}
                       onChange={(e) => set('video_title', e.target.value)} maxLength={200} />
                   </Field>
                   <Field label="Why MUST we watch this?" hint="Sell it to us. Optional, but persuasive." htmlFor="video_reason">

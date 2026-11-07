@@ -82,6 +82,8 @@ export interface RsvpResult {
 export type MyRsvp = RsvpPayload & RsvpResult & { video_status: VideoStatus | null };
 
 export interface VideoMeta {
+  /** true = YouTube confirmed it exists, false = YouTube says no such video, null = couldn't tell */
+  exists: boolean | null;
   title: string | null;
   channel: string | null;
   duration_seconds: number | null;

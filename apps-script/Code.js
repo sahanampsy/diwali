@@ -728,44 +728,53 @@ var DiwaliApi = (function(exports) {
 		const cache = CacheService.getScriptCache();
 		const hit = cache.get("yt:" + id);
 		if (hit) return JSON.parse(hit);
+		const unknown = {
+			exists: null,
+			title: null,
+			channel: null,
+			duration_seconds: null,
+			verified: false
+		};
 		let meta = null;
 		try {
 			if (typeof YouTube !== "undefined") {
 				const res = YouTube.Videos.list("snippet,contentDetails", { id });
 				const item = res.items && res.items[0];
 				meta = item ? {
+					exists: true,
 					title: item.snippet.title,
 					channel: item.snippet.channelTitle,
 					duration_seconds: parseIsoDuration(item.contentDetails.duration),
 					verified: true
 				} : {
-					title: null,
-					channel: null,
-					duration_seconds: null,
-					verified: false
+					...unknown,
+					exists: false
 				};
 			}
 		} catch (err) {
 			Logger.log("YouTube advanced service failed: " + err);
 		}
-		if (!meta) {
+		if (!meta) try {
 			const res = UrlFetchApp.fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id), { muteHttpExceptions: true });
-			if (res.getResponseCode() === 200) {
+			const status = res.getResponseCode();
+			if (status === 200) {
 				var _o$title, _o$author_name;
 				const o = JSON.parse(res.getContentText());
 				meta = {
+					exists: true,
 					title: (_o$title = o.title) !== null && _o$title !== void 0 ? _o$title : null,
 					channel: (_o$author_name = o.author_name) !== null && _o$author_name !== void 0 ? _o$author_name : null,
 					duration_seconds: null,
 					verified: false
 				};
-			} else meta = {
-				title: null,
-				channel: null,
-				duration_seconds: null,
-				verified: false
+			} else if (status === 404 || status === 400) meta = {
+				...unknown,
+				exists: false
 			};
+		} catch (err) {
+			Logger.log("oEmbed lookup failed: " + err);
 		}
+		if (!meta) return unknown;
 		cache.put("yt:" + id, JSON.stringify(meta), 21600);
 		return meta;
 	}

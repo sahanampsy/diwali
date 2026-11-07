@@ -83,24 +83,44 @@ async function call<T>(action: string, args: Record<string, unknown> = {}): Prom
   return json.data as T;
 }
 
-/** Title and (when the backend can) duration for a YouTube video. */
-async function videoMeta(id: string): Promise<VideoMeta | null> {
-  if (MODE === 'sheets') {
+/** Asks YouTube directly from the browser. Title only; no duration. */
+async function browserLookup(id: string): Promise<VideoMeta | null> {
+  const watch = encodeURIComponent('https://www.youtube.com/watch?v=' + id);
+  const sources = [
+    `https://www.youtube.com/oembed?format=json&url=${watch}`,
+    `https://noembed.com/embed?url=${watch}`,
+  ];
+  for (const url of sources) {
     try {
-      const meta = await call<VideoMeta | null>('videoMeta', { id });
-      if (meta) return meta;
+      const res = await fetch(url);
+      if (res.status === 404 && url.includes('youtube.com')) {
+        return { exists: false, title: null, channel: null, duration_seconds: null, verified: false };
+      }
+      if (!res.ok) continue;
+      const o = await res.json();
+      if (o.error || !o.title) continue; // noembed reports its own failures this way: not proof the video is missing
+      return { exists: true, title: o.title, channel: o.author_name ?? null, duration_seconds: null, verified: false };
     } catch {
-      /* fall through to public lookup */
+      /* blocked or offline: try the next source */
     }
   }
-  try {
-    const res = await fetch('https://noembed.com/embed?url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + id));
-    const o = await res.json();
-    if (o.error) return { title: null, channel: null, duration_seconds: null, verified: false };
-    return { title: o.title ?? null, channel: o.author_name ?? null, duration_seconds: null, verified: false };
-  } catch {
-    return null;
+  return null;
+}
+
+/** Title and (when the backend can) duration for a YouTube video. */
+async function videoMeta(id: string): Promise<VideoMeta | null> {
+  let server: VideoMeta | null = null;
+  if (MODE === 'sheets') {
+    try {
+      server = await call<VideoMeta | null>('videoMeta', { id });
+    } catch {
+      /* fall back to the browser */
+    }
+    if (server && (server.title || server.exists === false)) return server;
   }
+  const browser = await browserLookup(id);
+  if (!browser) return server;
+  return { ...browser, duration_seconds: server?.duration_seconds ?? null, verified: !!server?.verified };
 }
 
 export const api = {
